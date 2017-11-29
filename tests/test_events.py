@@ -56,23 +56,26 @@ def test_incorrect_framework_listener():
         events.add_framework_listener(Listener())
 
 
-# def test_framework_listener():
-#     class Listener:
-#         num = 0
-#         def framework_changed(self):
-#             self.num += 1
+def test_framework_listener():
+    class Listener:
+        fired_event = None
+        num = 0
+        def framework_changed(self, event):
+            self.fired_event = event
+            self.num += 1
 
-#     events = EventDispatcher()
-#     listener = Listener()
-#     assert events.add_framework_listener(listener)
-#     assert not events.add_framework_listener(listener)
-#     events.fire_framework_event()
-#     assert listener.num == 1    
+    events = EventDispatcher()
+    listener = Listener()
+    event = BundleEvent(BundleEvent.STARTING, 'bundle', 'origin')
+    assert events.add_framework_listener(listener)
+    assert not events.add_framework_listener(listener)
+    events.fire_framework_event(event)
+    assert listener.num == 1    
 
-#     assert events.remove_framework_listener(listener)
-#     assert not events.remove_framework_listener(listener)
-#     events.fire_framework_stopping()
-#     assert listener.num == 1
+    assert events.remove_framework_listener(listener)
+    assert not events.remove_framework_listener(listener)
+    events.fire_framework_event(event)
+    assert listener.num == 1
 
 
 def test_incorrect_service_listener():

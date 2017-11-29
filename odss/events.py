@@ -204,9 +204,9 @@ class ServiceListeners:
 
 class EventDispatcher:
     def __init__(self):
-        self.__framework = Listeners('framework_changed')
-        self.__bundle = Listeners('bundle_changed')
-        self.__service = ServiceListeners()
+        self.__frameworks = Listeners('framework_changed')
+        self.__bundles = Listeners('bundle_changed')
+        self.__services = ServiceListeners()
 
     def clear(self):
         '''
@@ -217,28 +217,28 @@ class EventDispatcher:
         self.__services.clear()
 
     def add_bundle_listener(self, listener):
-        return self.__bundle.add_listener(listener)
+        return self.__bundles.add_listener(listener)
 
     def add_framework_listener(self, listener):
-        return self.__framework.add_listener(listener)
+        return self.__frameworks.add_listener(listener)
 
     def add_service_listener(self, listener, interface=None, query_filter=None):
-        return self.__service.add_listener(listener, interface, query_filter)
+        return self.__services.add_listener(listener, interface, query_filter)
     
     def remove_bundle_listener(self, listener):
-        return self.__bundle.remove_listener(listener)
+        return self.__bundles.remove_listener(listener)
 
     def remove_framework_listener(self, listener):
-        return self.__framework.remove_listener(listener)
+        return self.__frameworks.remove_listener(listener)
     
     def remove_service_listener(self, listener):
-        return self.__service.remove_listener(listener)
+        return self.__services.remove_listener(listener)
 
     def fire_bundle_event(self, event):
-        self.__bundle.fire_event(event)
+        self.__bundles.fire_event(event)
 
-    def fire_framework_stopping(self, event):
-        self.__framework.fire_event(event)
+    def fire_framework_event(self, event):
+        self.__frameworks.fire_event(event)
         
     def fire_service_event(self, event):
-        self.__service.fire_event(event)
+        self.__services.fire_event(event)

@@ -38,17 +38,6 @@ class ServiceRegistry:
     def unregister(self, register):
         self._unregister_service(register.get_reference())
 
-    def _unregister_service(self, reference):
-        service = self.__serivces.pop(reference)
-        for spec in reference.get_property(OBJECTCLASS):
-            spec_services = self.__services_classes[spec]
-            if reference in spec_services:
-                spec_services.remove(reference)
-        bundle = reference.get_bundle()
-        if bundle in self.__serivces_bundles:
-            self.__serivces_bundles[bundle].remove(reference)
-        return service
-
     def unregister_services(self, bundle):
         if bundle in self.__serivces_bundles:
             refs = self.__serivces_bundles[bundle][:]
@@ -98,6 +87,17 @@ class ServiceRegistry:
             return service
         except KeyError:
             pass
+
+    def _unregister_service(self, reference):
+        service = self.__serivces.pop(reference)
+        for spec in reference.get_property(OBJECTCLASS):
+            spec_services = self.__services_classes[spec]
+            if reference in spec_services:
+                spec_services.remove(reference)
+        bundle = reference.get_bundle()
+        if bundle in self.__serivces_bundles:
+            self.__serivces_bundles[bundle].remove(reference)
+        return service
 
 
 class ServiceReference:

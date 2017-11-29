@@ -7,6 +7,7 @@ import sys
 from odss_common import ACTIVATOR
 
 from .bundle import Bundle, BundleContext
+from .events import BundleEvent
 from .errors import BundleException, FrameworkException
 from .registry import ServiceReference, ServiceRegistry
 
@@ -15,14 +16,32 @@ logger = logging.getLogger(__name__)
 
 
 class Framework(Bundle):
-    def __init__(self, settings):
+    def __init__(self, settings, loop=None):
         super().__init__(self, 0, 'atto.framework', sys.modules[__name__])
         self.__settings = settings
         self.__bundles = {}
-        self.__states = _States()
         self.__next_id = 1
         self.__registry = ServiceRegistry(self)
+        if loop is None:
+            loop = asyncio.get_event_loop()
+        self.__loop = loop
 
+
+    def get_bundle_by_id(self, bundle_id):
+        if bundle_id == 0:
+            return self
+        if bundle_id not in self.__bundles:
+            raise BundleException('Not found bundle id={}'.format(bundle_id))
+        return self.__bundles[bundle_id]
+
+    def get_bundle_by_name(self, name):
+        if name == self.name:
+            return self
+        for bundle in self.__bundles.values():
+            if bundle.name == name:
+                return bundle
+        raise BundleException('Not found bundle name={}'.format(name))
+        
     def get_property(self, name):
         if name in self.__settings:
             return self.__settings[name]
@@ -34,16 +53,18 @@ class Framework(Bundle):
             if bundle.name == name:
                 logger.debug('Already installed bundle: "%s"', name)
                 return
-
+        
         try:
             module_ = importlib.import_module(name)
-        except (ImportError, IOError) as ex:
+        except (ImportError, IOError, SyntaxError) as ex:
             raise BundleException(
                 'Error installing bundle "{0}": {1}'.format(name, ex))
+        
         bundle_id = self.__next_id
         bundle = Bundle(self, bundle_id, name, module_)
         self.__bundles[bundle_id] = bundle
         self.__next_id += 1
+        return bundle
 
     def register_service(self, bundle, clazz, service, properties=None):
         if bundle is None:
@@ -60,40 +81,46 @@ class Framework(Bundle):
         )
         return registration
 
-    async def start(self):
-        logger.info('Start atto')
-        state = self.__states.get(self)
-        if state.is_starting() or state.is_active():
-            logger.debug('Framewok already started')
+    def start(self):
+        logger.info('Start odss.framework')
+        if self.state in (Bundle.STARTING, Bundle.ACTIVE):
+            logger.debug('Framework already started')
             return False
 
-        state.starting()
+        self._set_state(Bundle.STARTING)
+        self._fire_bundle_event(BundleEvent.STARTING, self)
+
         for bundle in self.__bundles.copy().values():
             try:
-                await self._start_bundle(bundle)
+                self.start_bundle(bundle)
             except BundleException:
                 logger.exception('Starting bundle: "%s"', bundle.name)
-        state.active()
+        self._set_state(Bundle.ACTIVE)
+        self._fire_bundle_event(BundleEvent.STARTED, self)
 
-    async def stop(self):
-        logger.info('Stop atto')
-        state = self.__states.get(self)
-
-        if not state.is_active():
+        
+    def stop(self):
+        logger.info('Stop odss.framework')
+        
+        if self.state != Bundle.ACTIVE:
             logger.debug('Framewok not started')
             return False
-        state.stopping()
+
+        self._set_state(Bundle.STOPPING)
+        self._fire_bundle_event(BundleEvent.STOPPING, self)
+
         bundles = list(self.__bundles.copy().values())
         for bundle in bundles[::-1]:
-            if self.__states.get(bundle).is_active():
+            if self.state != Bundle.ACTIVE:
                 try:
-                    await self._stop_bundle(bundle)
+                    self.stop_bundle(bundle)
                 except BundleException:
-                    logger.exception('Stoping bundle: "%s"', bundle.name)
+                    logger.exception('Stoping bundle %s', bundle.name)
             else:
-                logger.debug('Bundle "%s" already stoped', bundle)
+                logger.debug('Bundle %s already stoped', bundle)
 
-        state.resolved()
+        self._set_state(Bundle.RESOLVED)
+        self._fire_bundle_event(BundleEvent.STOPPED, self)
 
     def get_service_reference(self, clazz, filter=None):
         return self.__registry.find_service_reference(clazz, filter)
@@ -109,52 +136,63 @@ class Framework(Bundle):
 
         return self.__registry.get_service(bundle, reference)
 
-    async def _start_bundle(self, bundle):
-        state = self.__states.get(bundle)
-
-        state.starting()
+    def start_bundle(self, bundle):
+        if bundle.state in (Bundle.STARTING, Bundle.ACTIVE):
+            return False
+        
+        previous_state = bundle.state
+        bundle._set_state(Bundle.STARTING)
+        self._fire_bundle_event(BundleEvent.STARTING, bundle)
 
         start_method = self.__get_activator_method(bundle, 'start')
         if start_method:
             try:
                 if asyncio.iscoroutinefunction(start_method):
-                    await start_method(BundleContext(self, bundle))
+                    future = start_method(BundleContext(self, bundle))
+                    self.__loop.run_until_complete(future)
                 else:
                     start_method(BundleContext(self, bundle))
             except (FrameworkException, BundleException):
-                state.rollback()
+                bundle._set_state(previous_state)
                 logger.exception('Error raised while starting: %s', bundle)
                 raise
             except Exception as ex:
-                state.rollback()
+                bundle._set_state(previous_state)
                 logger.exception('Error raised while starting: %s', bundle)
                 raise BundleException(str(ex))
-        state.active()
+        
+        bundle._set_state(Bundle.ACTIVE)
+        self._fire_bundle_event(BundleEvent.STARTED, bundle)
 
-    async def _stop_bundle(self, bundle):
-        state = self.__states.get(bundle)
-        state.stopping()
+    def stop_bundle(self, bundle):
+
+        previous_state = bundle.state
+        bundle._set_state(Bundle.STOPPING)
+        self._fire_bundle_event(BundleEvent.STOPPING, bundle)
+
         method = self.__get_activator_method(bundle, 'stop')
         if method:
             try:
                 if asyncio.iscoroutinefunction(method):
-                    await method(BundleContext(self, bundle))
+                    future = method(BundleContext(self, bundle))
+                    self.__loop.run_until_complete(future)
                 else:
                     method(BundleContext(self, bundle))
                 self.__registry.unregister_services(bundle)
                 self.__registry.unget_services(bundle)
             except (FrameworkException, BundleException):
-                state.rollback()
+                bundle._set_state(previous_state)
                 logger.exception(
                     'Error raised while starting bundle: %s', bundle)
                 raise
             except Exception as ex:
-                state.rollback()
+                bundle._set_state(previous_state)
                 logger.exception(
                     'Error raised while starting bundle: %s', bundle)
-                raise BundleException(str(ex))
-
-        state.resolved()
+                raise BundleException(str(
+                    ex))
+        bundle._set_state(Bundle.RESOLVED)
+        self._fire_bundle_event(BundleEvent.STOPPED, bundle)
 
     def __get_activator_method(self, bundle, name):
         activator = getattr(bundle.module, ACTIVATOR, None)
@@ -162,6 +200,8 @@ class Framework(Bundle):
             return getattr(activator, name, None)
         return None
 
+    def _fire_bundle_event(self, kind, bundle):
+        pass
 
 class _States:
     def __init__(self):

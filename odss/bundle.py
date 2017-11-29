@@ -7,33 +7,43 @@ class Bundle:
     STOPPING = 16
     ACTIVE = 32
 
-    def __init__(self, framework, bundle_id, bundle_name, py_module):
+    def __init__(self, framework, bundle_id, name, py_module):
         self.__framework = framework
         self.__id = bundle_id
-        self.__name = bundle_name
+        self.__name = name
         self.__module = py_module
-        self._state = Bundle.RESOLVED
-
-    @property
-    def framework(self):
-        return self.__framework
+        self.__state = Bundle.RESOLVED
 
     @property
     def id(self):
         return self.__id
 
     @property
+    def state(self):
+        return self.__state
+
+    @property
     def name(self):
         return self.__name
 
     @property
-    def state(self):
-        return self._state
-
-    @property
     def module(self):
         return self.__module
+    
+    def start(self):
+        self.__framework.start_bundle(self)
 
+    def stop(self):
+        self.__framework.stop_bundle(self)
+
+    def __str__(self):
+        '''
+        String representation
+        '''
+        return "Bundle(id={0}, name={1})".format(self.__id, self.__name)
+
+    def _set_state(self, state):
+        self.__state = state
 
 class BundleContext:
 
