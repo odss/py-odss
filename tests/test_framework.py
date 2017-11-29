@@ -10,6 +10,15 @@ SIMPLE_BUNDLE = 'tests.bundles.simple'
 ECHO_BUNDLE = 'tests.bundles.echo'
 
 
+class FrameworkListener:
+    async def framework_changed(self, event):
+        self.event = event
+
+
+@pytest.fixture()
+def listener():
+    return FrameworkListener()
+
 def test_initial_framework():
     framework = create_framework()
     bundle = framework.get_bundle_by_id(0)
@@ -23,17 +32,14 @@ def test_initial_framework():
         assert framework.get_bundle_by_id(1) == None
 
 
-def test_start_with_bundle():
+@pytest.mark.asyncio
+async def test_start_with_bundle(listener):
     framework = create_framework()
-    bundle = framework.install_bundle(SIMPLE_BUNDLE)
+    
+    context = framework.get_context()
+    context.add_framework_listener(listener)
 
-    assert bundle.state == Bundle.RESOLVED, 'Bundle should be in RESOLVED state'
-
-    framework.start()
-
-    assert bundle.state == Bundle.ACTIVE, 'Bundle should be in ACTIVE state'
-
-    framework.stop()
-
-    assert bundle.state == Bundle.RESOLVED, 'Bundle should be in RESOLVED state'
-
+    
+    await framework.start()
+    
+    await framework.stop()

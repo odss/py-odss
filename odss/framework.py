@@ -4,10 +4,10 @@ import logging
 import sys
 
 
-from odss_common import ACTIVATOR
+from odss_common import ACTIVATOR_CLASS
 
 from .bundle import Bundle, BundleContext
-from .events import BundleEvent
+from .events import BundleEvent, EventDispatcher
 from .errors import BundleException, FrameworkException
 from .registry import ServiceReference, ServiceRegistry
 
@@ -22,10 +22,12 @@ class Framework(Bundle):
         self.__bundles = {}
         self.__next_id = 1
         self.__registry = ServiceRegistry(self)
+        self.__events = EventDispatcher()
         if loop is None:
             loop = asyncio.get_event_loop()
         self.__loop = loop
-
+        self.set_context(BundleContext(self, self, self.__events))
+        
 
     def get_bundle_by_id(self, bundle_id):
         if bundle_id == 0:
@@ -81,25 +83,25 @@ class Framework(Bundle):
         )
         return registration
 
-    def start(self):
+    async def start(self):
         logger.info('Start odss.framework')
         if self.state in (Bundle.STARTING, Bundle.ACTIVE):
             logger.debug('Framework already started')
             return False
-
+        
         self._set_state(Bundle.STARTING)
-        self._fire_bundle_event(BundleEvent.STARTING, self)
+        await self.__fire_bundle_event(BundleEvent.STARTING, self)
 
         for bundle in self.__bundles.copy().values():
             try:
-                self.start_bundle(bundle)
+                await self.start_bundle(bundle)
             except BundleException:
                 logger.exception('Starting bundle: "%s"', bundle.name)
         self._set_state(Bundle.ACTIVE)
-        self._fire_bundle_event(BundleEvent.STARTED, self)
+        await self.__fire_bundle_event(BundleEvent.STARTED, self)
 
         
-    def stop(self):
+    async def stop(self):
         logger.info('Stop odss.framework')
         
         if self.state != Bundle.ACTIVE:
@@ -107,20 +109,70 @@ class Framework(Bundle):
             return False
 
         self._set_state(Bundle.STOPPING)
-        self._fire_bundle_event(BundleEvent.STOPPING, self)
+        await self.__fire_bundle_event(BundleEvent.STOPPING, self)
 
         bundles = list(self.__bundles.copy().values())
         for bundle in bundles[::-1]:
             if self.state != Bundle.ACTIVE:
                 try:
-                    self.stop_bundle(bundle)
+                    await self.stop_bundle(bundle)
                 except BundleException:
                     logger.exception('Stoping bundle %s', bundle.name)
             else:
                 logger.debug('Bundle %s already stoped', bundle)
-
+        
         self._set_state(Bundle.RESOLVED)
-        self._fire_bundle_event(BundleEvent.STOPPED, self)
+        await self.__fire_bundle_event(BundleEvent.STOPPED, self)
+
+    async def start_bundle(self, bundle):
+        if bundle.state in (Bundle.STARTING, Bundle.ACTIVE):
+            return False
+        
+        previous_state = bundle.state
+        bundle._set_state(Bundle.STARTING)
+        await self.__fire_bundle_event(BundleEvent.STARTING, bundle)
+
+        try:
+            start_method = self.__get_activator_method(bundle, 'start')
+            if start_method:
+                start_method = asyncio.coroutine(start_method)
+                await start_method(BundleContext(self, bundle))
+        except (FrameworkException, BundleException):
+            bundle._set_state(previous_state)
+            logger.exception('Error raised while starting: %s', bundle)
+            raise
+        except Exception as ex:
+            bundle._set_state(previous_state)
+            logger.exception('Error raised while starting: %s', bundle)
+            raise BundleException(str(ex))
+        
+        bundle._set_state(Bundle.ACTIVE)
+        await self.__fire_bundle_event(BundleEvent.STARTED, bundle)
+
+    async def stop_bundle(self, bundle):
+        bundle._set_state(Bundle.STOPPING)
+        await self.__fire_bundle_event(BundleEvent.STOPPING, bundle)
+
+        try:
+            method = self.__get_activator_method(bundle, 'stop')
+            if method:
+                starter = asyncio.coroutine(method)
+                await starter(bundle.get_context())
+        except (FrameworkException, BundleException):
+            logger.exception(
+                'Error raised while starting bundle: %s', bundle)
+            raise
+        except Exception as ex:
+            logger.exception(
+                'Error raised while starting bundle: %s', bundle)
+            raise BundleException(str(ex))
+        
+        self.__registry.unregister_services(bundle)
+        self.__registry.unget_services(bundle)
+        
+        bundle.remove_context()
+        bundle._set_state(Bundle.RESOLVED)
+        await self.__fire_bundle_event(BundleEvent.STOPPED, bundle)
 
     def get_service_reference(self, clazz, filter=None):
         return self.__registry.find_service_reference(clazz, filter)
@@ -136,110 +188,14 @@ class Framework(Bundle):
 
         return self.__registry.get_service(bundle, reference)
 
-    def start_bundle(self, bundle):
-        if bundle.state in (Bundle.STARTING, Bundle.ACTIVE):
-            return False
-        
-        previous_state = bundle.state
-        bundle._set_state(Bundle.STARTING)
-        self._fire_bundle_event(BundleEvent.STARTING, bundle)
-
-        start_method = self.__get_activator_method(bundle, 'start')
-        if start_method:
-            try:
-                if asyncio.iscoroutinefunction(start_method):
-                    future = start_method(BundleContext(self, bundle))
-                    self.__loop.run_until_complete(future)
-                else:
-                    start_method(BundleContext(self, bundle))
-            except (FrameworkException, BundleException):
-                bundle._set_state(previous_state)
-                logger.exception('Error raised while starting: %s', bundle)
-                raise
-            except Exception as ex:
-                bundle._set_state(previous_state)
-                logger.exception('Error raised while starting: %s', bundle)
-                raise BundleException(str(ex))
-        
-        bundle._set_state(Bundle.ACTIVE)
-        self._fire_bundle_event(BundleEvent.STARTED, bundle)
-
-    def stop_bundle(self, bundle):
-
-        previous_state = bundle.state
-        bundle._set_state(Bundle.STOPPING)
-        self._fire_bundle_event(BundleEvent.STOPPING, bundle)
-
-        method = self.__get_activator_method(bundle, 'stop')
-        if method:
-            try:
-                if asyncio.iscoroutinefunction(method):
-                    future = method(BundleContext(self, bundle))
-                    self.__loop.run_until_complete(future)
-                else:
-                    method(BundleContext(self, bundle))
-                self.__registry.unregister_services(bundle)
-                self.__registry.unget_services(bundle)
-            except (FrameworkException, BundleException):
-                bundle._set_state(previous_state)
-                logger.exception(
-                    'Error raised while starting bundle: %s', bundle)
-                raise
-            except Exception as ex:
-                bundle._set_state(previous_state)
-                logger.exception(
-                    'Error raised while starting bundle: %s', bundle)
-                raise BundleException(str(
-                    ex))
-        bundle._set_state(Bundle.RESOLVED)
-        self._fire_bundle_event(BundleEvent.STOPPED, bundle)
-
     def __get_activator_method(self, bundle, name):
-        activator = getattr(bundle.module, ACTIVATOR, None)
-        if activator:
-            return getattr(activator, name, None)
+        activator = getattr(bundle.module, ACTIVATOR_CLASS, None)
+        if activator is not None:
+            return getattr(activator(), name, None)
         return None
 
-    def _fire_bundle_event(self, kind, bundle):
+    async def __fire_bundle_event(self, kind, bundle):
+        await self.__events.fire_bundle_event(BundleEvent(kind, bundle))
+
+    async def __fire_serivice_event(self):
         pass
-
-class _States:
-    def __init__(self):
-        self.map = {}
-
-    def get(self, bundle):
-        return self.map.setdefault(bundle, _State())
-
-
-class _State:
-    def __init__(self):
-        self.resolved()
-
-    def starting(self):
-        self.__value = Bundle.STARTING
-
-    def active(self):
-        self.__value = Bundle.ACTIVE
-        self.commit()
-
-    def resolved(self):
-        self.__value = Bundle.RESOLVED
-        self.commit()
-
-    def stopping(self):
-        self.__value = Bundle.STOPPING
-
-    def commit(self):
-        self.__state = self.__value
-
-    def rollback(self):
-        return self.__value == self.__state
-
-    def is_active(self):
-        return self.__state == Bundle.ACTIVE
-
-    def is_resolved(self):
-        return self.__state == Bundle.RESOLVED
-
-    def is_starting(self):
-        return self.__state == Bundle.STARTING

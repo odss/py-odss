@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from odss_common import OBJECTCLASS
@@ -104,60 +105,61 @@ class ServiceEvent:
 
 class Listeners:
     def __init__(self, listener_method):
-        self.__listeners = []
-        self.__listener_method = listener_method
+        self.listeners = []
+        self.listener_method = listener_method
 
     def clear_listeners(self):
-        self.__listeners = []
+        self.listeners = []
 
     def add_listener(self, listener):
-        if listener is None or not hasattr(listener, self.__listener_method):
-            msg = 'Missing method: "{}" in given listener'.format(self.__listener_method)
+        if listener is None or not hasattr(listener, self.listener_method):
+            msg = 'Missing method: "{}" in given listener'.format(self.listener_method)
             raise BundleException(msg)
 
-        if listener in self.__listeners:
+        if listener in self.listeners:
             logger.warning('Already known listener "%s"', listener)
             return False
 
-        self.__listeners.append(listener)
+        self.listeners.append(listener)
         return True
     
     def remove_listener(self, listener):
-        if listener not in self.__listeners:
+        if listener not in self.listeners:
             return False
         try:
-            self.__listeners.remove(listener)
+            self.listeners.remove(listener)
             return True
         except ValueError:
             return False
     
-    def fire_event(self, event):
-        listeners = self.__listeners[:]
+    async def fire_event(self, event):
+        listeners = self.listeners[:]
         for listener in listeners:
-            method = getattr(listener, self.__listener_method)
+            method = getattr(listener, self.listener_method)
+            action = asyncio.coroutine(method)
             try:
-                method(event)
+                await action(event)
             except:
                 logger.exception('Error in listener')
 
 
 class ServiceListeners:
     def __init__(self):
-        self.__by_interface = {}
-        self.__by_listeners = {}
+        self.by_interface = {}
+        self.by_listeners = {}
     
     def clear(self):
-        self.__by_interface = {}
-        self.__by_listeners = {}
+        self.by_interface = {}
+        self.by_listeners = {}
 
     def remove_listener(self, listener):
         try:
-            data = self.__by_listeners.pop(listener)
+            data = self.by_listeners.pop(listener)
             listener, interface, query = data 
-            listeners = self.__by_interface[interface]
+            listeners = self.by_interface[interface]
             listeners.remove(data)
             if not listeners:
-                del self.__by_interface[interface]
+                del self.by_interface[interface]
             return True
         except KeyError:
             return False
@@ -167,7 +169,7 @@ class ServiceListeners:
         if listener is None or not hasattr(listener, 'service_changed'):
             raise BundleException('Missing method: "service_changed" in given service listener')
 
-        if listener in self.__by_listeners:
+        if listener in self.by_listeners:
             logger.warning('Already known service listener "%s"', listener)
             return False
 
@@ -177,68 +179,69 @@ class ServiceListeners:
             raise BundleException('Invalid service filter: {}'.format(ex))
 
         info = (listener, interface, query)
-        self.__by_listeners[listener] = info
-        self.__by_interface.setdefault(interface, []).append(info)
+        self.by_listeners[listener] = info
+        self.by_interface.setdefault(interface, []).append(info)
         return True
 
-    def fire_event(self, event):
+    async def fire_event(self, event):
         properties = event.reference.get_properties()
         listeners = set()
         interfaces_with_none = properties[OBJECTCLASS] + [None]
         
         for interface in interfaces_with_none:
             try:
-                listeners.update(self.__by_interface[interface])
+                listeners.update(self.by_interface[interface])
             except KeyError:
                 pass
 
         for listener, interface, query in listeners:
+            action = asyncio.coroutine(listener.service_changed)
             if query.match(properties):
-                listener.service_changed(event)
+                await action(event)
             elif event.kind == ServiceEvent.MODIFIED:
                 previous = event.previous_properties
                 if query.match(previous):
                     event = ServiceEvent(ServiceEvent.MODIFIED_ENDMATCH, event.reference, previous)
-                    listener.service_changed(event)
+                    await action(event)
 
 
 class EventDispatcher:
     def __init__(self):
-        self.__frameworks = Listeners('framework_changed')
-        self.__bundles = Listeners('bundle_changed')
-        self.__services = ServiceListeners()
+        self.frameworks = Listeners('framework_changed')
+        self.bundles = Listeners('bundle_changed')
+        self.services = ServiceListeners()
 
     def clear(self):
         '''
         Remove all listeners
         '''
-        self.__frameworks.clear()
-        self.__bundles.clear()
-        self.__services.clear()
+        self.frameworks.clear()
+        self.bundles.clear()
+        self.services.clear()
 
     def add_bundle_listener(self, listener):
-        return self.__bundles.add_listener(listener)
+        return self.bundles.add_listener(listener)
 
     def add_framework_listener(self, listener):
-        return self.__frameworks.add_listener(listener)
+        return self.frameworks.add_listener(listener)
 
     def add_service_listener(self, listener, interface=None, query_filter=None):
-        return self.__services.add_listener(listener, interface, query_filter)
+        return self.services.add_listener(listener, interface, query_filter)
     
     def remove_bundle_listener(self, listener):
-        return self.__bundles.remove_listener(listener)
+        return self.bundles.remove_listener(listener)
 
     def remove_framework_listener(self, listener):
-        return self.__frameworks.remove_listener(listener)
+        return self.frameworks.remove_listener(listener)
     
     def remove_service_listener(self, listener):
-        return self.__services.remove_listener(listener)
+        return self.services.remove_listener(listener)
 
-    def fire_bundle_event(self, event):
-        self.__bundles.fire_event(event)
+    async def fire_bundle_event(self, event):
+        await self.bundles.fire_event(event)
 
-    def fire_framework_event(self, event):
-        self.__frameworks.fire_event(event)
+    async def fire_framework_event(self, event):
+        await self.frameworks.fire_event(event)
         
-    def fire_service_event(self, event):
-        self.__services.fire_event(event)
+    async def fire_service_event(self, event):
+        await self.services.fire_event(event)
