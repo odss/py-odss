@@ -23,6 +23,7 @@ class Framework(Bundle):
         self.__next_id = 1
         self.__registry = ServiceRegistry(self)
         self.__events = EventDispatcher()
+        self.__activators = {}
         if loop is None:
             loop = asyncio.get_event_loop()
         self.__loop = loop
@@ -67,6 +68,19 @@ class Framework(Bundle):
         self.__bundles[bundle_id] = bundle
         self.__next_id += 1
         return bundle
+
+    def uninstall_bundle(self, bundle):
+        if bundle.id in self.__bundles:
+            bundle.stop()
+
+            self.__fire_bundle_event(BundleEvent.UNINSTALLED, bundle)
+            del self.__bundles[bundle.id]
+            del self.__activators[bundle.id]
+            try:
+                del sys.modules[bundle.name]
+            except KeyError:
+                pass
+            
 
     def register_service(self, bundle, clazz, service, properties=None):
         if bundle is None:
@@ -129,6 +143,7 @@ class Framework(Bundle):
             return False
         
         previous_state = bundle.state
+        bundle.set_context(BundleContext(self, bundle, self.__events))
         bundle._set_state(Bundle.STARTING)
         await self.__fire_bundle_event(BundleEvent.STARTING, bundle)
 
@@ -136,7 +151,7 @@ class Framework(Bundle):
             start_method = self.__get_activator_method(bundle, 'start')
             if start_method:
                 start_method = asyncio.coroutine(start_method)
-                await start_method(BundleContext(self, bundle))
+                await start_method(bundle.get_context())
         except (FrameworkException, BundleException):
             bundle._set_state(previous_state)
             logger.exception('Error raised while starting: %s', bundle)
@@ -156,8 +171,8 @@ class Framework(Bundle):
         try:
             method = self.__get_activator_method(bundle, 'stop')
             if method:
-                starter = asyncio.coroutine(method)
-                await starter(bundle.get_context())
+                stoper = asyncio.coroutine(method)
+                await stoper(bundle.get_context())
         except (FrameworkException, BundleException):
             logger.exception(
                 'Error raised while starting bundle: %s', bundle)
@@ -189,9 +204,12 @@ class Framework(Bundle):
         return self.__registry.get_service(bundle, reference)
 
     def __get_activator_method(self, bundle, name):
-        activator = getattr(bundle.module, ACTIVATOR_CLASS, None)
+        if bundle.id not in self.__activators:
+            activator = getattr(bundle.module, ACTIVATOR_CLASS, None)
+            self.__activators[bundle.id] = activator()
+        activator = self.__activators.get(bundle.id)
         if activator is not None:
-            return getattr(activator(), name, None)
+            return getattr(activator, name, None)
         return None
 
     async def __fire_bundle_event(self, kind, bundle):

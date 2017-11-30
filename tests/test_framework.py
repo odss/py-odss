@@ -1,18 +1,13 @@
-
 import pytest
 
 from odss import create_framework
 from odss.bundle import Bundle
 from odss.errors import BundleException
 
+from tests.utils import FrameworkListener
 
-SIMPLE_BUNDLE = 'tests.bundles.simple'
+
 ECHO_BUNDLE = 'tests.bundles.echo'
-
-
-class FrameworkListener:
-    async def framework_changed(self, event):
-        self.event = event
 
 
 @pytest.fixture()
@@ -28,6 +23,7 @@ def test_initial_framework():
     
     with pytest.raises(BundleException):
         assert framework.get_bundle_by_name('test') == None
+
     with pytest.raises(BundleException):
         assert framework.get_bundle_by_id(1) == None
 
@@ -39,7 +35,8 @@ async def test_start_with_bundle(listener):
     context = framework.get_context()
     context.add_framework_listener(listener)
 
-    
+    bundle = framework.install_bundle(ECHO_BUNDLE)
+
     await framework.start()
     
     await framework.stop()
