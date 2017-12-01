@@ -31,11 +31,11 @@ class Bundle:
     def module(self):
         return self.__module
     
-    def start(self):
-        self.__framework.start_bundle(self)
+    async def start(self):
+        await self.__framework.start_bundle(self)
 
-    def stop(self):
-        self.__framework.stop_bundle(self)
+    async def stop(self):
+        await self.__framework.stop_bundle(self)
 
     def set_context(self, context):
         self.__context = context

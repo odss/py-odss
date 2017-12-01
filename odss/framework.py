@@ -50,7 +50,7 @@ class Framework(Bundle):
             return self.__settings[name]
         raise KeyError('Not found property: "{}"'.format(name))
 
-    def install_bundle(self, name, path=None):
+    async def install_bundle(self, name, path=None, autostart=True):
         logger.info('Install bungle: "{}" ({})'.format(name, path))
         for bundle in self.__bundles.values():
             if bundle.name == name:
@@ -67,15 +67,18 @@ class Framework(Bundle):
         bundle = Bundle(self, bundle_id, name, module_)
         self.__bundles[bundle_id] = bundle
         self.__next_id += 1
+        if autostart and self.state == Bundle.ACTIVE:
+            await bundle.start()
         return bundle
 
-    def uninstall_bundle(self, bundle):
+    async def uninstall_bundle(self, bundle):
         if bundle.id in self.__bundles:
-            bundle.stop()
+            await bundle.stop()
 
-            self.__fire_bundle_event(BundleEvent.UNINSTALLED, bundle)
+            await self.__fire_bundle_event(BundleEvent.UNINSTALLED, bundle)
             del self.__bundles[bundle.id]
-            del self.__activators[bundle.id]
+            if bundle.id in self.__activators:
+                del self.__activators[bundle.id]
             try:
                 del sys.modules[bundle.name]
             except KeyError:
@@ -110,7 +113,7 @@ class Framework(Bundle):
             try:
                 await self.start_bundle(bundle)
             except BundleException:
-                logger.exception('Starting bundle: "%s"', bundle.name)
+                logger.exception('Error raised while bundle starting: "%s"', bundle.name)
         self._set_state(Bundle.ACTIVE)
         await self.__fire_bundle_event(BundleEvent.STARTED, self)
 
@@ -131,7 +134,7 @@ class Framework(Bundle):
                 try:
                     await self.stop_bundle(bundle)
                 except BundleException:
-                    logger.exception('Stoping bundle %s', bundle.name)
+                    logger.exception('Error raised while bundle stopping %s', bundle.name)
             else:
                 logger.debug('Bundle %s already stoped', bundle)
         
@@ -152,34 +155,32 @@ class Framework(Bundle):
             if start_method:
                 start_method = asyncio.coroutine(start_method)
                 await start_method(bundle.get_context())
-        except (FrameworkException, BundleException):
+        except BundleException:
             bundle._set_state(previous_state)
-            logger.exception('Error raised while starting: %s', bundle)
             raise
         except Exception as ex:
             bundle._set_state(previous_state)
-            logger.exception('Error raised while starting: %s', bundle)
             raise BundleException(str(ex))
         
         bundle._set_state(Bundle.ACTIVE)
         await self.__fire_bundle_event(BundleEvent.STARTED, bundle)
+        return True
 
     async def stop_bundle(self, bundle):
+        previous_state = bundle.state
         bundle._set_state(Bundle.STOPPING)
         await self.__fire_bundle_event(BundleEvent.STOPPING, bundle)
-
+        
         try:
             method = self.__get_activator_method(bundle, 'stop')
             if method:
                 stoper = asyncio.coroutine(method)
                 await stoper(bundle.get_context())
-        except (FrameworkException, BundleException):
-            logger.exception(
-                'Error raised while starting bundle: %s', bundle)
+        except BundleException:
+            bundle._set_state(previous_state)
             raise
         except Exception as ex:
-            logger.exception(
-                'Error raised while starting bundle: %s', bundle)
+            bundle._set_state(previous_state)
             raise BundleException(str(ex))
         
         self.__registry.unregister_services(bundle)
