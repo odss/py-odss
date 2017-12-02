@@ -1,6 +1,3 @@
-
-
-
 all: test
 
 test: .develop
