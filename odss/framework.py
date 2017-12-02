@@ -8,7 +8,7 @@ from odss_common import ACTIVATOR_CLASS
 from .bundle import Bundle, BundleContext
 from .errors import BundleException
 from .events import BundleEvent, EventDispatcher, FrameworkEvent
-from .registry import ServiceReference, ServiceRegistry
+from .registry import ServiceRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,8 @@ class Framework(Bundle):
         if loop is None:
             loop = asyncio.get_event_loop()
         self.__loop = loop
-        self.set_context(BundleContext(self, self, self.__events))
+        contex = BundleContext(self, self, self.__registry, self.__events)
+        self.set_context(contex)
 
     def get_bundle_by_id(self, bundle_id):
         if bundle_id == 0:
@@ -82,21 +83,6 @@ class Framework(Bundle):
             except KeyError:
                 pass
 
-    def register_service(self, bundle, clazz, service, properties=None):
-        if bundle is None:
-            raise BundleException('Invalid registration parameter: bundle')
-        if clazz is None:
-            raise BundleException('Invalid registration parameter: clazz')
-        if service is None:
-            raise BundleException('Invalid registration parameter: service')
-
-        properties = properties.copy() if isinstance(properties, dict) else {}
-
-        registration = self.__registry.register(
-            bundle, clazz, service, properties
-        )
-        return registration
-
     async def start(self):
         logger.info('Start odss.framework')
         if self.state in (Bundle.STARTING, Bundle.ACTIVE):
@@ -146,7 +132,8 @@ class Framework(Bundle):
             return False
 
         previous_state = bundle.state
-        bundle.set_context(BundleContext(self, bundle, self.__events))
+        context = BundleContext(self, bundle, self.__registry, self.__events)
+        bundle.set_context(context)
         bundle._set_state(Bundle.STARTING)
         await self.__fire_bundle_event(BundleEvent.STARTING, bundle)
 
@@ -195,23 +182,9 @@ class Framework(Bundle):
         await self.__fire_bundle_event(BundleEvent.STOPPED, bundle)
         return True
 
-    def get_service_reference(self, clazz, filter=None):
-        return self.__registry.find_service_reference(clazz, filter)
-
-    def get_service_references(self, clazz, filter=None):
-        return self.__registry.find_service_references(clazz, filter)
-
-    def get_service(self, bundle, reference):
-        if not isinstance(bundle, Bundle):
-            raise TypeError('Expected Bundle object')
-        if not isinstance(reference, ServiceReference):
-            raise TypeError('Expected ServiceReference object')
-
-        return self.__registry.get_service(bundle, reference)
-
     def __get_activator_method(self, bundle, name):
         if bundle.id not in self.__activators:
-            activator = getattr(bundle.module, ACTIVATOR_CLASS, None)
+            activator = getattr(bundle.get_module(), ACTIVATOR_CLASS, None)
             self.__activators[bundle.id] = activator()
         activator = self.__activators.get(bundle.id)
         if activator is not None:

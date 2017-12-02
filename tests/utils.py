@@ -1,5 +1,5 @@
 
-ECHO_BUNDLE = 'tests.bundles.echo'
+TEXT_BUNDLE = 'tests.bundles.text'
 SIMPLE_BUNLE = 'tests.bundles.simple'
 
 

@@ -83,7 +83,7 @@ async def test_install_bundle_with_errors(framework):
     await bundle.stop()
     assert bundle.state == Bundle.RESOLVED
 
-    bundle.module.throw_error = True
+    bundle.get_module().throw_error = True
     with pytest.raises(BundleException):
         await bundle.start()
     assert bundle.state == Bundle.RESOLVED
@@ -91,7 +91,7 @@ async def test_install_bundle_with_errors(framework):
     await bundle.start()
     assert bundle.state == Bundle.ACTIVE
 
-    bundle.module.throw_error = True
+    bundle.get_module().throw_error = True
     with pytest.raises(BundleException):
         await bundle.stop()
     assert bundle.state == Bundle.ACTIVE

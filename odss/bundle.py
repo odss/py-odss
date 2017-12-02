@@ -1,3 +1,6 @@
+from .errors import BundleException
+
+
 class Bundle:
 
     UNINSTALLED = 1
@@ -27,8 +30,7 @@ class Bundle:
     def name(self):
         return self.__name
 
-    @property
-    def module(self):
+    def get_module(self):
         return self.__module
 
     async def start(self):
@@ -58,16 +60,17 @@ class Bundle:
 
 class BundleContext:
 
-    def __init__(self, framework, bundle, events):
+    def __init__(self, framework, bundle, registry, events):
         self.__framework = framework
         self.__bundle = bundle
         self.__events = events
+        self.__registry = registry
 
     def __str__(self):
         return "BundleContext({0})".format(self.__bundle)
 
     def get_bundle(self, bundle_id=None) -> Bundle:
-        pass
+        return self.__framework.get_bundle_by_id(bundle_id)
 
     @property
     def bundles(self):
@@ -77,22 +80,29 @@ class BundleContext:
         return self.__framework.get_property(name)
 
     def get_service(self, reference):
-        pass
+        return self.__registry.get_service(self.__bundle, reference)
+
+    def unget_service(self, reference):
+        return self.__registry.unget_service(self.__bundle, reference)
 
     def get_service_reference(self, clazz, filter=None):
-        return self.__framework.get_service_reference(clazz, filter)
+        return self.__registry.find_service_reference(clazz, filter)
 
     def get_service_references(self, clazz, filter=None):
-        return self.__framework.get_service_references(clazz, filter)
+        return self.__registry.find_service_references(clazz, filter)
 
-    def install_bundle(self, name, path=None):
-        pass
-
-    def install_package(self, path, recursive=False):
-        pass
+    async def install_bundle(self, name, path=None):
+        return await self.__framework.install_bundle(name, path)
 
     def register_service(self, clazz, service, properties=None):
-        return self.__framework.register_service(
+        if clazz is None:
+            raise BundleException('Invalid registration parameter: clazz')
+        if service is None:
+            raise BundleException('Invalid registration parameter: service')
+
+        properties = properties.copy() if isinstance(properties, dict) else {}
+
+        return self.__registry.register(
             self.__bundle, clazz, service, properties)
 
     def add_framework_listener(self, listener):
