@@ -1,8 +1,8 @@
 from odss_common import (OBJECTCLASS, SERVICE_BUNDLE_ID, SERVICE_ID,
-                                 SERVICE_RANKING)
+                         SERVICE_RANKING)
 
-from .query import create_query
 from .errors import BundleException
+from .query import create_query
 from .utils import class_name, classes_name
 
 
@@ -136,10 +136,10 @@ class ServiceReference:
 
     def __str__(self):
         return "ServiceReference(id={0}, Bundle={1}, Classes={2})".format(
-                self.__service_id,
-                self.__bundle.get_bundle_id(),
-                self.__properties[OBJECTCLASS]
-            )
+            self.__service_id,
+            self.__bundle.get_bundle_id(),
+            self.__properties[OBJECTCLASS]
+        )
 
     def __hash__(self):
         return self.__service_id

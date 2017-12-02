@@ -1,11 +1,10 @@
 from odss.bundle import BundleContext
-
 from tests.interfaces import IEchoService
 
 
 class DrunkEchoServcie:
     def echo(self, message):
-        return message[::-1]  
+        return message[::-1]
 
 
 class Activator:
@@ -17,8 +16,9 @@ class Activator:
         self.context = context
         self.service = DrunkEchoServcie()
         self.properties = {'name': 'drunk'}
-        self.registration = context.register_service(IEchoService, self.service, self.properties)
-    
+        self.registration = context.register_service(
+            IEchoService, self.service, self.properties)
+
     def stop(self, context):
         assert isinstance(context, BundleContext)
         self.registration.unregister()

@@ -30,7 +30,7 @@ class Bundle:
     @property
     def module(self):
         return self.__module
-    
+
     async def start(self):
         await self.__framework.start_bundle(self)
 
@@ -54,6 +54,7 @@ class Bundle:
 
     def _set_state(self, state):
         self.__state = state
+
 
 class BundleContext:
 
@@ -94,20 +95,20 @@ class BundleContext:
         return self.__framework.register_service(
             self.__bundle, clazz, service, properties)
 
-    def add_bundle_listener(self, listener):
-        return self.__events.add_bundle_listener(listener)
-
     def add_framework_listener(self, listener):
-        return self.__events.add_framework_listener(listener)
+        return self.__events.framework.add_listener(listener)
 
-    def add_service_listener(self, listener, interface=None, query_filter=None):
-        return self.__events.add_service_listener(listener, interface, query_filter)
-    
-    def remove_bundle_listener(self, listener):
-        return self.__events.remove_listener(listener)
+    def add_bundle_listener(self, listener):
+        return self.__events.bundles.add_listener(listener)
+
+    def add_service_listener(self, listener, interface=None, filter=None):
+        return self.__events.services.add_listener(listener, interface, filter)
 
     def remove_framework_listener(self, listener):
-        return self.__events.remove_listener(listener)
-    
+        return self.__events.framework.remove_listener(listener)
+
+    def remove_bundle_listener(self, listener):
+        return self.__events.bundles.remove_listener(listener)
+
     def remove_service_listener(self, listener):
-        return self.__events.remove_listener(listener)
+        return self.__events.services.remove_listener(listener)

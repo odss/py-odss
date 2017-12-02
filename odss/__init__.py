@@ -7,4 +7,3 @@ def create_framework(settings=None, bundles=None):
         for symbolic_name in bundles:
             framework.install_bundle(symbolic_name)
     return framework
-

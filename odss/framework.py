@@ -3,14 +3,12 @@ import importlib
 import logging
 import sys
 
-
 from odss_common import ACTIVATOR_CLASS
 
 from .bundle import Bundle, BundleContext
-from .events import BundleEvent, EventDispatcher
-from .errors import BundleException, FrameworkException
+from .errors import BundleException
+from .events import BundleEvent, EventDispatcher, FrameworkEvent
 from .registry import ServiceReference, ServiceRegistry
-
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +26,6 @@ class Framework(Bundle):
             loop = asyncio.get_event_loop()
         self.__loop = loop
         self.set_context(BundleContext(self, self, self.__events))
-        
 
     def get_bundle_by_id(self, bundle_id):
         if bundle_id == 0:
@@ -44,38 +41,39 @@ class Framework(Bundle):
             if bundle.name == name:
                 return bundle
         raise BundleException('Not found bundle name={}'.format(name))
-        
+
     def get_property(self, name):
         if name in self.__settings:
             return self.__settings[name]
         raise KeyError('Not found property: "{}"'.format(name))
 
-    async def install_bundle(self, name, path=None, autostart=True):
+    async def install_bundle(self, name, path=None):
         logger.info('Install bungle: "{}" ({})'.format(name, path))
         for bundle in self.__bundles.values():
             if bundle.name == name:
                 logger.debug('Already installed bundle: "%s"', name)
                 return
-        
+
         try:
             module_ = importlib.import_module(name)
         except (ImportError, IOError, SyntaxError) as ex:
             raise BundleException(
                 'Error installing bundle "{0}": {1}'.format(name, ex))
-        
+
         bundle_id = self.__next_id
         bundle = Bundle(self, bundle_id, name, module_)
         self.__bundles[bundle_id] = bundle
         self.__next_id += 1
-        if autostart and self.state == Bundle.ACTIVE:
-            await bundle.start()
+
+        await self.__fire_bundle_event(BundleEvent.INSTALLED, bundle)
         return bundle
 
     async def uninstall_bundle(self, bundle):
         if bundle.id in self.__bundles:
             await bundle.stop()
-
+            bundle._set_state(Bundle.UNINSTALLED)
             await self.__fire_bundle_event(BundleEvent.UNINSTALLED, bundle)
+
             del self.__bundles[bundle.id]
             if bundle.id in self.__activators:
                 del self.__activators[bundle.id]
@@ -83,7 +81,6 @@ class Framework(Bundle):
                 del sys.modules[bundle.name]
             except KeyError:
                 pass
-            
 
     def register_service(self, bundle, clazz, service, properties=None):
         if bundle is None:
@@ -105,28 +102,28 @@ class Framework(Bundle):
         if self.state in (Bundle.STARTING, Bundle.ACTIVE):
             logger.debug('Framework already started')
             return False
-        
+
         self._set_state(Bundle.STARTING)
-        await self.__fire_bundle_event(BundleEvent.STARTING, self)
+        await self.__fire_framework_event(BundleEvent.STARTING)
 
         for bundle in self.__bundles.copy().values():
             try:
                 await self.start_bundle(bundle)
             except BundleException:
-                logger.exception('Error raised while bundle starting: "%s"', bundle.name)
+                logger.exception(
+                    'Error raised while bundle starting: "%s"', bundle.name)
         self._set_state(Bundle.ACTIVE)
-        await self.__fire_bundle_event(BundleEvent.STARTED, self)
+        await self.__fire_framework_event(BundleEvent.STARTED)
 
-        
     async def stop(self):
         logger.info('Stop odss.framework')
-        
+
         if self.state != Bundle.ACTIVE:
             logger.debug('Framewok not started')
             return False
 
         self._set_state(Bundle.STOPPING)
-        await self.__fire_bundle_event(BundleEvent.STOPPING, self)
+        await self.__fire_framework_event(BundleEvent.STOPPING)
 
         bundles = list(self.__bundles.copy().values())
         for bundle in bundles[::-1]:
@@ -134,17 +131,20 @@ class Framework(Bundle):
                 try:
                     await self.stop_bundle(bundle)
                 except BundleException:
-                    logger.exception('Error raised while bundle stopping %s', bundle.name)
+                    logger.exception(
+                        'Error raised while bundle stopping %s', bundle.name)
             else:
                 logger.debug('Bundle %s already stoped', bundle)
-        
+
         self._set_state(Bundle.RESOLVED)
-        await self.__fire_bundle_event(BundleEvent.STOPPED, self)
+        await self.__fire_framework_event(BundleEvent.STOPPED)
 
     async def start_bundle(self, bundle):
+        if self.state not in (Bundle.STARTING, Bundle.ACTIVE):
+            return False
         if bundle.state in (Bundle.STARTING, Bundle.ACTIVE):
             return False
-        
+
         previous_state = bundle.state
         bundle.set_context(BundleContext(self, bundle, self.__events))
         bundle._set_state(Bundle.STARTING)
@@ -161,16 +161,20 @@ class Framework(Bundle):
         except Exception as ex:
             bundle._set_state(previous_state)
             raise BundleException(str(ex))
-        
+
         bundle._set_state(Bundle.ACTIVE)
         await self.__fire_bundle_event(BundleEvent.STARTED, bundle)
         return True
 
     async def stop_bundle(self, bundle):
+        if bundle.state != Bundle.ACTIVE:
+            return False
+
         previous_state = bundle.state
+
         bundle._set_state(Bundle.STOPPING)
         await self.__fire_bundle_event(BundleEvent.STOPPING, bundle)
-        
+
         try:
             method = self.__get_activator_method(bundle, 'stop')
             if method:
@@ -182,13 +186,14 @@ class Framework(Bundle):
         except Exception as ex:
             bundle._set_state(previous_state)
             raise BundleException(str(ex))
-        
+
         self.__registry.unregister_services(bundle)
         self.__registry.unget_services(bundle)
-        
+
         bundle.remove_context()
         bundle._set_state(Bundle.RESOLVED)
         await self.__fire_bundle_event(BundleEvent.STOPPED, bundle)
+        return True
 
     def get_service_reference(self, clazz, filter=None):
         return self.__registry.find_service_reference(clazz, filter)
@@ -214,7 +219,10 @@ class Framework(Bundle):
         return None
 
     async def __fire_bundle_event(self, kind, bundle):
-        await self.__events.fire_bundle_event(BundleEvent(kind, bundle))
+        await self.__events.bundles.fire_event(BundleEvent(kind, bundle))
 
     async def __fire_serivice_event(self):
         pass
+
+    async def __fire_framework_event(self, kind):
+        await self.__events.framework.fire_event(FrameworkEvent(kind, self))

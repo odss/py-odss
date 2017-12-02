@@ -17,18 +17,17 @@ cov cover coverage:
 
 install:
 	@pip install -U pip
-	@pip install -Ur requirements/dev.txt
-
-.develop: .install-deps $(shell find odss -type f) .flake
-	@pip install -e .
-	@touch .develop
 
 .install-deps: $(shell find requirements -type f)
 	@pip install -U -r requirements/dev.txt
 	@touch .install-deps
 
-.flake: .install-deps $(shell find odss -type f) \
-                      $(shell find tests -type f) 
+.develop: .install-deps $(shell find odss -type f) .flake
+	@pip install -e .
+	@touch .develop
+
+.flake: .install-deps 	$(shell find odss -type f) \
+        				$(shell find tests -type f) 
 	@flake8 odss tests
 	@touch .flake
 
@@ -37,6 +36,7 @@ clean:
 	@rm -f `find . -type f -name '*.py[co]' `
 	@rm -rf .cache
 	@rm -f .coverage
+	@rm -f .develop
 	@rm -rf htmlcov
 	@rm -rf cover
 	@python setup.py clean

@@ -1,3 +1,8 @@
+
+ECHO_BUNDLE = 'tests.bundles.echo'
+SIMPLE_BUNLE = 'tests.bundles.simple'
+
+
 class Listener:
     def __init__(self):
         self.events = []
@@ -30,4 +35,3 @@ class BundleListener(Listener):
 
 class AllListener(FrameworkListener, BundleListener, ServiceListener):
     pass
-    
