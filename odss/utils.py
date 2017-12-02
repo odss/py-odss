@@ -7,7 +7,7 @@ def class_name(clazz):
     module = getattr(clazz, '__module__', '')
     name = getattr(clazz, '__name__', '')
     if not module and not name:
-        raise BundleException('Invalid class name {}'.format(clazz))
+        raise BundleException('Invalid class name: "{}"'.format(clazz))
     return '{}.{}'.format(module, name)
 
 
