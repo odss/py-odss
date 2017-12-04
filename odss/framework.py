@@ -194,8 +194,5 @@ class Framework(Bundle):
     async def __fire_bundle_event(self, kind, bundle):
         await self.__events.bundles.fire_event(BundleEvent(kind, bundle))
 
-    async def __fire_serivice_event(self):
-        pass
-
     async def __fire_framework_event(self, kind):
         await self.__events.framework.fire_event(FrameworkEvent(kind, self))

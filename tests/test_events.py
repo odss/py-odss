@@ -4,7 +4,7 @@ from odss.errors import BundleException
 from odss.events import BundleEvent, FrameworkEvent, ServiceEvent
 from odss.registry import ServiceReference
 from odss_common import OBJECTCLASS, SERVICE_ID
-from tests.utils import SIMPLE_BUNLE
+from tests.utils import SIMPLE_BUNLE, TRANSLATE_BUNDLE
 
 
 def test_add_incorrect_bundle_listener(events):
@@ -105,15 +105,45 @@ async def test_bundle_events(framework, listener):
 
     bundle = await framework.install_bundle(SIMPLE_BUNLE)
 
+    assert events[0].kind == FrameworkEvent.INSTALLED
+
     await bundle.start()
+
+    assert events[1].kind == FrameworkEvent.STARTING
+    assert events[2].kind == FrameworkEvent.STARTED
+
     await bundle.stop()
+
+    assert events[3].kind == FrameworkEvent.STOPPING
+    assert events[4].kind == FrameworkEvent.STOPPED
+
     await framework.uninstall_bundle(bundle)
+
+    assert events[5].kind == FrameworkEvent.UNINSTALLED
 
     assert len(events) == 6
 
-    assert events[0].kind == FrameworkEvent.INSTALLED
-    assert events[1].kind == FrameworkEvent.STARTING
-    assert events[2].kind == FrameworkEvent.STARTED
-    assert events[3].kind == FrameworkEvent.STOPPING
-    assert events[4].kind == FrameworkEvent.STOPPED
-    assert events[5].kind == FrameworkEvent.UNINSTALLED
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("active")
+async def test_service_events(framework, listener):
+    context = framework.get_context()
+    context.add_service_listener(listener)
+
+    events = listener.events
+
+    bundle = await framework.install_bundle(TRANSLATE_BUNDLE)
+    await bundle.start()
+    assert events[0].kind == ServiceEvent.REGISTERED
+
+    await bundle.stop()
+    assert events[0].kind == ServiceEvent.UNREGISTERING
+
+    await framework.uninstall_bundle(bundle)
+
+    assert len(events) == 2
+
+    context.remove_service_listener(listener)
+    await bundle.start()
+    await bundle.stop()
+    assert len(events) == 2

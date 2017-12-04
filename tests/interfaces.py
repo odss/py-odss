@@ -3,6 +3,6 @@ class ITextService:
         pass
 
 
-class IMathService:
-    def add(self, first, second):
+class ITranslateService:
+    def translate(self, word):
         pass

@@ -1,4 +1,5 @@
 from .errors import BundleException
+from .events import ServiceEvent
 
 
 class Bundle:
@@ -94,7 +95,7 @@ class BundleContext:
     async def install_bundle(self, name, path=None):
         return await self.__framework.install_bundle(name, path)
 
-    def register_service(self, clazz, service, properties=None):
+    async def register_service(self, clazz, service, properties=None):
         if clazz is None:
             raise BundleException('Invalid registration parameter: clazz')
         if service is None:
@@ -102,8 +103,13 @@ class BundleContext:
 
         properties = properties.copy() if isinstance(properties, dict) else {}
 
-        return self.__registry.register(
+        registration = self.__registry.register(
             self.__bundle, clazz, service, properties)
+        
+        await self.__fire_service_event(
+            ServiceEvent.REGISTERED, registration.get_reference()
+        )
+        return registration
 
     def add_framework_listener(self, listener):
         return self.__events.framework.add_listener(listener)
@@ -122,3 +128,7 @@ class BundleContext:
 
     def remove_service_listener(self, listener):
         return self.__events.services.remove_listener(listener)
+
+    async def __fire_service_event(self, kind, reference):
+        event = ServiceEvent(kind, reference)
+        await self.__events.fire_service_event(event)
