@@ -61,11 +61,10 @@ class Bundle:
 
 class BundleContext:
 
-    def __init__(self, framework, bundle, registry, events):
+    def __init__(self, framework, bundle, events):
         self.__framework = framework
         self.__bundle = bundle
         self.__events = events
-        self.__registry = registry
 
     def __str__(self):
         return "BundleContext({0})".format(self.__bundle)
@@ -81,35 +80,22 @@ class BundleContext:
         return self.__framework.get_property(name)
 
     def get_service(self, reference):
-        return self.__registry.get_service(self.__bundle, reference)
+        return self.__framework.get_service(self.__bundle, reference)
 
     def unget_service(self, reference):
-        return self.__registry.unget_service(self.__bundle, reference)
+        return self.__framework.unget_service(self.__bundle, reference)
 
     def get_service_reference(self, clazz, filter=None):
-        return self.__registry.find_service_reference(clazz, filter)
+        return self.__framework.find_service_reference(clazz, filter)
 
     def get_service_references(self, clazz, filter=None):
-        return self.__registry.find_service_references(clazz, filter)
+        return self.__framework.find_service_references(clazz, filter)
 
     async def install_bundle(self, name, path=None):
         return await self.__framework.install_bundle(name, path)
 
     async def register_service(self, clazz, service, properties=None):
-        if clazz is None:
-            raise BundleException('Invalid registration parameter: clazz')
-        if service is None:
-            raise BundleException('Invalid registration parameter: service')
-
-        properties = properties.copy() if isinstance(properties, dict) else {}
-
-        registration = self.__registry.register(
-            self.__bundle, clazz, service, properties)
-        
-        await self.__fire_service_event(
-            ServiceEvent.REGISTERED, registration.get_reference()
-        )
-        return registration
+        return await self.__framework.register_service(self.__bundle, clazz, service, properties)
 
     def add_framework_listener(self, listener):
         return self.__events.framework.add_listener(listener)

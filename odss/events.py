@@ -193,7 +193,7 @@ class ServiceListeners:
     async def fire_event(self, event):
         properties = event.reference.get_properties()
         listeners = set()
-        interfaces_with_none = properties[OBJECTCLASS] + [None]
+        interfaces_with_none = tuple(properties[OBJECTCLASS]) + (None,)
 
         for interface in interfaces_with_none:
             try:

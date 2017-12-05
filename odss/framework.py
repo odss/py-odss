@@ -7,7 +7,7 @@ from odss_common import ACTIVATOR_CLASS
 
 from .bundle import Bundle, BundleContext
 from .errors import BundleException
-from .events import BundleEvent, EventDispatcher, FrameworkEvent
+from .events import BundleEvent, EventDispatcher, FrameworkEvent, ServiceEvent
 from .registry import ServiceRegistry
 
 logger = logging.getLogger(__name__)
@@ -21,11 +21,12 @@ class Framework(Bundle):
         self.__next_id = 1
         self.__registry = ServiceRegistry(self)
         self.__events = EventDispatcher()
+        
         self.__activators = {}
-        if loop is None:
-            loop = asyncio.get_event_loop()
-        self.__loop = loop
-        contex = BundleContext(self, self, self.__registry, self.__events)
+        self.__registered_services = []
+
+
+        contex = BundleContext(self, self, self.__events)
         self.set_context(contex)
 
     def get_bundle_by_id(self, bundle_id):
@@ -47,6 +48,44 @@ class Framework(Bundle):
         if name in self.__settings:
             return self.__settings[name]
         raise KeyError('Not found property: "{}"'.format(name))
+
+    def get_service(self, bundle, reference):
+        return self.__registry.get_service(bundle, reference)
+
+    def unget_service(self, bundle, reference):
+        return self.__registry.unget_service(bundle, reference)
+
+    def find_service_references(self, clazz=None, query=None):
+        return self.__registry.find_service_references(clazz, query)
+    
+    def find_service_reference(self, clazz=None, query=None):
+        return self.__registry.find_service_reference(clazz, query)
+    
+    async def register_service(self, bundle, clazz, service, properties=None):
+        if bundle is None:
+            raise BundleException('Invalid registration parameter: bundle')
+        if clazz is None:
+            raise BundleException('Invalid registration parameter: clazz')
+        if service is None:
+            raise BundleException('Invalid registration parameter: service')
+
+        properties = properties.copy() if isinstance(properties, dict) else {}
+
+        registration = self.__registry.register(
+            bundle, clazz, service, properties)
+
+        await self.__fire_service_event(
+            ServiceEvent.REGISTERED, registration.get_reference()
+        )
+        self.__registered_services.append(registration)
+        return registration
+
+    async def unregister_service(self, registration):
+        reference = registration.get_reference()
+        self.__registry.unregister(reference)
+        self.__registered_services.remove(registration)
+        event = ServiceEvent(ServiceEvent.UNREGISTERING, reference)
+        await self.__events.services.fire_event(event)
 
     async def install_bundle(self, name, path=None):
         logger.info('Install bungle: "{}" ({})'.format(name, path))
@@ -132,7 +171,7 @@ class Framework(Bundle):
             return False
 
         previous_state = bundle.state
-        context = BundleContext(self, bundle, self.__registry, self.__events)
+        context = BundleContext(self, bundle, self.__events)
         bundle.set_context(context)
         bundle._set_state(Bundle.STARTING)
         await self.__fire_bundle_event(BundleEvent.STARTING, bundle)
@@ -174,9 +213,9 @@ class Framework(Bundle):
             bundle._set_state(previous_state)
             raise BundleException(str(ex))
 
-        self.__registry.unregister_services(bundle)
-        self.__registry.unget_services(bundle)
-
+        for registration in self.__registered_services[:]:
+            self.unregister_service(registration)
+        
         bundle.remove_context()
         bundle._set_state(Bundle.RESOLVED)
         await self.__fire_bundle_event(BundleEvent.STOPPED, bundle)
@@ -191,8 +230,11 @@ class Framework(Bundle):
             return getattr(activator, name, None)
         return None
 
+    async def __fire_framework_event(self, kind):
+        await self.__events.framework.fire_event(FrameworkEvent(kind, self))
+    
     async def __fire_bundle_event(self, kind, bundle):
         await self.__events.bundles.fire_event(BundleEvent(kind, bundle))
 
-    async def __fire_framework_event(self, kind):
-        await self.__events.framework.fire_event(FrameworkEvent(kind, self))
+    async def __fire_service_event(self, kind, reference):
+        await self.__events.services.fire_event(ServiceEvent(kind, reference))

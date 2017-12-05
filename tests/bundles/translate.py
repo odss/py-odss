@@ -14,12 +14,12 @@ class TranslateService:
 
 
 class Activator:
-    def start(self, context):
+    async def start(self, context):
         assert isinstance(context, BundleContext)
         props = {'locale': 'pl'}
-        self.reg = context.register_service(
+        self.reg = await context.register_service(
             ITranslateService, TranslateService(), props)
 
-    def stop(self, context):
+    async def stop(self, context):
         assert isinstance(context, BundleContext)
-        self.reg.unregister()
+        await self.reg.unregister()

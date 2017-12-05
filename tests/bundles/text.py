@@ -16,7 +16,7 @@ class Activator:
     def __init__(self):
         self.init = True
 
-    def start(self, context):
+    async def start(self, context):
         assert isinstance(context, BundleContext)
         self.context = context
 
@@ -24,17 +24,17 @@ class Activator:
         self.normal_service = NormalEchoServcie()
 
         props = {'name': 'normal'}
-        self.reg_normal = context.register_service(
+        self.reg_normal = await context.register_service(
             ITextService, self.normal_service, props)
 
         props = {'name': 'drunk'}
-        self.reg_drunk = context.register_service(
+        self.reg_drunk = await context.register_service(
             ITextService, self.drunk_service, props)
 
-    def stop(self, context):
+    async def stop(self, context):
         assert isinstance(context, BundleContext)
-        self.reg_normal.unregister()
-        self.reg_drunk.unregister()
+        await self.reg_normal.unregister()
+        await self.reg_drunk.unregister()
         self.normal_service = None
         self.drunk_service = None
         self.context = None

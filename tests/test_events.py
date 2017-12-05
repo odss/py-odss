@@ -133,11 +133,12 @@ async def test_service_events(framework, listener):
     events = listener.events
 
     bundle = await framework.install_bundle(TRANSLATE_BUNDLE)
+    
     await bundle.start()
     assert events[0].kind == ServiceEvent.REGISTERED
-
+    
     await bundle.stop()
-    assert events[0].kind == ServiceEvent.UNREGISTERING
+    assert events[1].kind == ServiceEvent.UNREGISTERING
 
     await framework.uninstall_bundle(bundle)
 

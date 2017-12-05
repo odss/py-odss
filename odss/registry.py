@@ -34,22 +34,23 @@ class ServiceRegistry:
             refs = self.__services_classes.setdefault(spec, [])
             bisect.insort_left(refs, ref)
         self.__serivces_bundles.setdefault(bundle, []).append(ref)
-        return ServiceRegistration(self, ref)
+        return ServiceRegistration(self.__framework, ref)
+    
+    def unregister(self, reference):
+        if reference not in self.__serivces:
+            raise BundleException('Unknown service: {}'.format(reference))
 
-    def unregister(self, register):
-        self._unregister_service(register.get_reference())
-
-    def unregister_services(self, bundle):
+        service = self.__serivces.pop(reference)
+        for spec in reference.get_property(OBJECTCLASS):
+            spec_services = self.__services_classes[spec]
+            idx = bisect.bisect_left(spec_services, reference)
+            del spec_services[idx]
+            if not spec_services:
+                del self.__services_classes[spec]
+        bundle = reference.get_bundle()
         if bundle in self.__serivces_bundles:
-            refs = self.__serivces_bundles[bundle][:]
-            for ref in refs:
-                self._unregister_service(ref)
-
-    def unget_services(self, bundle):
-        if bundle in self.__serivces_bundles:
-            refs = self.__serivces_bundles[bundle][:]
-            for ref in refs:
-                self.unget_service(bundle, ref)
+            self.__serivces_bundles[bundle].remove(reference)
+        return service
 
     def find_service_references(self, clazz=None, query=None,
                                 only_first=False):
@@ -75,7 +76,7 @@ class ServiceRegistry:
 
     def get_service(self, bundle, reference):
         if not isinstance(reference, ServiceReference):
-            raise TypeError('Expected ServiceReference object')
+            raise BundleException('Expected ServiceReference object')
 
         try:
             service = self.__serivces[reference]
@@ -87,7 +88,7 @@ class ServiceRegistry:
 
     def unget_service(self, bundle, reference):
         if not isinstance(reference, ServiceReference):
-            raise TypeError('Expected ServiceReference object')
+            raise BundleException('Expected ServiceReference object')
 
         try:
             service = self.__serivces[reference]
@@ -95,22 +96,6 @@ class ServiceRegistry:
             return service
         except KeyError:
             pass
-
-    def _unregister_service(self, reference):
-        if reference not in self.__serivces:
-            raise BundleException('Unknown service: {}'.format(reference))
-
-        service = self.__serivces.pop(reference)
-        for spec in reference.get_property(OBJECTCLASS):
-            spec_services = self.__services_classes[spec]
-            idx = bisect.bisect_left(spec_services, reference)
-            del spec_services[idx]
-            if not spec_services:
-                del self.__services_classes[spec]
-        bundle = reference.get_bundle()
-        if bundle in self.__serivces_bundles:
-            self.__serivces_bundles[bundle].remove(reference)
-        return service
 
 
 class ServiceReference:
@@ -177,12 +162,12 @@ class ServiceReference:
 
 
 class ServiceRegistration:
-    def __init__(self, registry, reference):
-        self.__registry = registry
+    def __init__(self, framework, reference):
+        self.__framework = framework
         self.__reference = reference
 
-    def unregister(self):
-        self.__registry.unregister(self)
+    async def unregister(self):
+        await self.__framework.unregister_service(self)
 
     def get_reference(self):
         return self.__reference
