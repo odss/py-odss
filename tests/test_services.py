@@ -63,7 +63,7 @@ async def test_install(framework):
 
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("active")
-async def test_invalid_get_service(framework):
+async def test_unregister_service(framework):
     context = framework.get_context()
     registration = await context.register_service('foo', 'bar')
 
@@ -75,8 +75,8 @@ async def test_invalid_get_service(framework):
     await registration.unregister()
 
     # unregister twice
-    # with pytest.raises(BundleException):
-    #     registration.unregister()
+    with pytest.raises(BundleException):
+        await registration.unregister()
 
     with pytest.raises(BundleException):
         context.get_service(reference)

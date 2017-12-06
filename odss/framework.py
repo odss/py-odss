@@ -25,7 +25,6 @@ class Framework(Bundle):
         self.__activators = {}
         self.__registered_services = []
 
-
         contex = BundleContext(self, self, self.__events)
         self.set_context(contex)
 
@@ -214,7 +213,7 @@ class Framework(Bundle):
             raise BundleException(str(ex))
 
         for registration in self.__registered_services[:]:
-            self.unregister_service(registration)
+            await self.unregister_service(registration)
         
         bundle.remove_context()
         bundle._set_state(Bundle.RESOLVED)

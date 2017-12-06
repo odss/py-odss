@@ -6,8 +6,9 @@ from odss.errors import BundleException
 from tests.utils import SIMPLE_BUNLE
 
 
-def test_initial_framework():
-    framework = create_framework()
+@pytest.mark.asyncio
+async def test_initial_framework():
+    framework = await create_framework()
     bundle = framework.get_bundle_by_id(0)
     assert bundle == framework
     bundle = framework.get_bundle_by_name(framework.name)

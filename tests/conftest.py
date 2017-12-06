@@ -14,11 +14,12 @@ def listener():
 
 
 @pytest.fixture()
-def framework():
+@pytest.mark.asyncio
+async def framework():
     '''
     Create framework instance
     '''
-    return create_framework()
+    return await create_framework()
 
 
 @pytest.fixture
