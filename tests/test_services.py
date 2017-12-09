@@ -53,7 +53,7 @@ async def test_install(framework):
     context.unget_service(ref)
 
     await bundle.stop()
-
+    
     ref1 = context.get_service_reference(ITextService)
     assert ref1 is None
 

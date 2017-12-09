@@ -17,28 +17,28 @@ class Framework(Bundle):
     def __init__(self, settings, loop=None):
         super().__init__(self, 0, 'atto.framework', sys.modules[__name__])
         self.__settings = settings
-        self.__bundles = {}
+        self.__bundles = []
+        self.__bundles_map = {}
         self.__next_id = 1
         self.__registry = ServiceRegistry(self)
         self.__events = EventDispatcher()
         
         self.__activators = {}
-        self.__registered_services = []
-
+    
         contex = BundleContext(self, self, self.__events)
         self.set_context(contex)
 
     def get_bundle_by_id(self, bundle_id):
         if bundle_id == 0:
             return self
-        if bundle_id not in self.__bundles:
+        if bundle_id not in self.__bundles_map:
             raise BundleException('Not found bundle id={}'.format(bundle_id))
-        return self.__bundles[bundle_id]
+        return self.__bundles_map[bundle_id]
 
     def get_bundle_by_name(self, name):
         if name == self.name:
             return self
-        for bundle in self.__bundles.values():
+        for bundle in self.__bundles:
             if bundle.name == name:
                 return bundle
         raise BundleException('Not found bundle name={}'.format(name))
@@ -76,19 +76,20 @@ class Framework(Bundle):
         await self.__fire_service_event(
             ServiceEvent.REGISTERED, registration.get_reference()
         )
-        self.__registered_services.append(registration)
         return registration
 
-    async def unregister_service(self, registration):
+    async def unregister_service(self, registration):        
         reference = registration.get_reference()
+        await self.__unregister_service(reference)
+        
+    async def __unregister_service(self, reference):
         self.__registry.unregister(reference)
-        self.__registered_services.remove(registration)
         event = ServiceEvent(ServiceEvent.UNREGISTERING, reference)
         await self.__events.services.fire_event(event)
 
     async def install_bundle(self, name, path=None):
         logger.info('Install bungle: "{}" ({})'.format(name, path))
-        for bundle in self.__bundles.values():
+        for bundle in self.__bundles:
             if bundle.name == name:
                 logger.debug('Already installed bundle: "%s"', name)
                 return
@@ -101,19 +102,21 @@ class Framework(Bundle):
 
         bundle_id = self.__next_id
         bundle = Bundle(self, bundle_id, name, module_)
-        self.__bundles[bundle_id] = bundle
+        self.__bundles.append(bundle)
+        self.__bundles_map[bundle_id] = bundle
         self.__next_id += 1
 
         await self.__fire_bundle_event(BundleEvent.INSTALLED, bundle)
         return bundle
 
     async def uninstall_bundle(self, bundle):
-        if bundle.id in self.__bundles:
+        if bundle in self.__bundles:
             await bundle.stop()
             bundle._set_state(Bundle.UNINSTALLED)
             await self.__fire_bundle_event(BundleEvent.UNINSTALLED, bundle)
 
-            del self.__bundles[bundle.id]
+            del self.__bundles_map[bundle.id]
+            self.__bundles.remove(bundle)
             if bundle.id in self.__activators:
                 del self.__activators[bundle.id]
             try:
@@ -130,7 +133,7 @@ class Framework(Bundle):
         self._set_state(Bundle.STARTING)
         await self.__fire_framework_event(BundleEvent.STARTING)
 
-        for bundle in self.__bundles.copy().values():
+        for bundle in self.__bundles:
             try:
                 await self.start_bundle(bundle)
             except BundleException:
@@ -148,9 +151,8 @@ class Framework(Bundle):
 
         self._set_state(Bundle.STOPPING)
         await self.__fire_framework_event(BundleEvent.STOPPING)
-
-        bundles = list(self.__bundles.copy().values())
-        for bundle in bundles[::-1]:
+        
+        for bundle in self.__bundles[::-1]:
             if self.state != Bundle.ACTIVE:
                 try:
                     await self.stop_bundle(bundle)
@@ -212,8 +214,8 @@ class Framework(Bundle):
             bundle._set_state(previous_state)
             raise BundleException(str(ex))
 
-        for registration in self.__registered_services[:]:
-            await self.unregister_service(registration)
+        for reference in self.__registry.get_bundle_references(bundle):
+            await self.__unregister_service(reference)
         
         bundle.remove_context()
         bundle._set_state(Bundle.RESOLVED)
