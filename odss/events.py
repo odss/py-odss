@@ -5,6 +5,8 @@ from odss_common import OBJECTCLASS
 
 from .errors import BundleException
 from .query import create_query
+from .utils import class_name
+
 
 logger = logging.getLogger(__name__)
 
@@ -170,21 +172,22 @@ class ServiceListeners:
         except KeyError:
             return False
 
-    def add_listener(self, listener, interface=None, filter=None):
+    def add_listener(self, listener, interface=None, query=None):
 
         if listener is None or not hasattr(listener, 'service_changed'):
             raise BundleException(
                 'Missing method: "service_changed" in given service listener')
-
+        if interface is not None:
+            interface = class_name(interface)
         if listener in self.by_listeners:
             logger.warning('Already known service listener "%s"', listener)
             return False
 
         try:
-            query = create_query(filter)
+            query = create_query(query)
         except (TypeError, ValueError) as ex:
-            raise BundleException('Invalid service filter: {}'.format(ex))
-
+            raise BundleException('Invalid service query: {}'.format(ex))
+        
         info = (listener, interface, query)
         self.by_listeners[listener] = info
         self.by_interface.setdefault(interface, []).append(info)

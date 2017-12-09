@@ -4,7 +4,9 @@ from odss.errors import BundleException
 from odss.events import BundleEvent, FrameworkEvent, ServiceEvent
 from odss.registry import ServiceReference
 from odss_common import OBJECTCLASS, SERVICE_ID
+
 from tests.utils import SIMPLE_BUNLE, TRANSLATE_BUNDLE
+from tests.interfaces import ITextService
 
 
 def test_add_incorrect_bundle_listener(events):
@@ -77,6 +79,19 @@ async def test_service_listener_all_interfaces(events, listener):
     assert not events.remove_service_listener(listener)
     await events.fire_service_event(event)
     assert len(listener) == 1
+
+
+@pytest.mark.asyncio
+async def test_service_listener_with_interface(framework, events, listener):
+    context = framework.get_context()
+    
+    context.add_service_listener(listener, ITextService)
+    reg = await context.register_service(ITextService, 'mock service')
+    await reg.unregister()
+
+    assert len(listener) == 2
+    assert listener.events[0].kind == ServiceEvent.REGISTERED
+    assert listener.events[1].kind == ServiceEvent.UNREGISTERING
 
 
 @pytest.mark.asyncio
