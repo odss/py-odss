@@ -35,7 +35,7 @@ class ServiceRegistry:
             bisect.insort_left(refs, ref)
         self._services_bundles.setdefault(bundle, []).append(ref)
         return ServiceRegistration(self._framework, ref)
-    
+
     def unregister(self, reference):
         if reference not in self._services:
             raise BundleException('Unknown service: {}'.format(reference))
@@ -95,7 +95,7 @@ class ServiceRegistry:
             return service
         except KeyError:
             pass
-    
+
     def get_bundle_references(self, bundle):
         return self._services_bundles.get(bundle, [])
 

@@ -1,4 +1,3 @@
-from .errors import BundleException
 from .events import ServiceEvent
 
 
@@ -95,7 +94,8 @@ class BundleContext:
         return await self.__framework.install_bundle(name, path)
 
     async def register_service(self, clazz, service, properties=None):
-        return await self.__framework.register_service(self.__bundle, clazz, service, properties)
+        return await self.__framework.register_service(
+            self.__bundle, clazz, service, properties)
 
     def add_framework_listener(self, listener):
         return self.__events.framework.add_listener(listener)

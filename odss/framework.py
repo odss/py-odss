@@ -22,9 +22,9 @@ class Framework(Bundle):
         self.__next_id = 1
         self.__registry = ServiceRegistry(self)
         self.__events = EventDispatcher()
-        
+
         self.__activators = {}
-    
+
         contex = BundleContext(self, self, self.__events)
         self.set_context(contex)
 
@@ -56,10 +56,10 @@ class Framework(Bundle):
 
     def find_service_references(self, clazz=None, query=None):
         return self.__registry.find_service_references(clazz, query)
-    
+
     def find_service_reference(self, clazz=None, query=None):
         return self.__registry.find_service_reference(clazz, query)
-    
+
     async def register_service(self, bundle, clazz, service, properties=None):
         if bundle is None:
             raise BundleException('Invalid registration parameter: bundle')
@@ -78,10 +78,10 @@ class Framework(Bundle):
         )
         return registration
 
-    async def unregister_service(self, registration):        
+    async def unregister_service(self, registration):
         reference = registration.get_reference()
         await self.__unregister_service(reference)
-        
+
     async def __unregister_service(self, reference):
         self.__registry.unregister(reference)
         event = ServiceEvent(ServiceEvent.UNREGISTERING, reference)
@@ -151,7 +151,7 @@ class Framework(Bundle):
 
         self._set_state(Bundle.STOPPING)
         await self.__fire_framework_event(BundleEvent.STOPPING)
-        
+
         for bundle in self.__bundles[::-1]:
             if self.state != Bundle.ACTIVE:
                 try:
@@ -216,7 +216,7 @@ class Framework(Bundle):
 
         for reference in self.__registry.get_bundle_references(bundle):
             await self.__unregister_service(reference)
-        
+
         bundle.remove_context()
         bundle._set_state(Bundle.RESOLVED)
         await self.__fire_bundle_event(BundleEvent.STOPPED, bundle)
@@ -233,7 +233,7 @@ class Framework(Bundle):
 
     async def __fire_framework_event(self, kind):
         await self.__events.framework.fire_event(FrameworkEvent(kind, self))
-    
+
     async def __fire_bundle_event(self, kind, bundle):
         await self.__events.bundles.fire_event(BundleEvent(kind, bundle))
 
