@@ -1,9 +1,9 @@
 import pytest
 
-from odss import create_framework
-from odss.bundle import Bundle
-from odss.errors import BundleException
-from tests.utils import SIMPLE_BUNLE
+from odss.core import create_framework
+from odss.core.bundle import Bundle
+from odss.core.errors import BundleException
+from tests.utils import SIMPLE_BUNDLE
 
 
 @pytest.mark.asyncio
@@ -38,7 +38,7 @@ async def test_start_and_stop(framework):
 @pytest.mark.usefixtures("active")
 async def test_install_uninstall_bundle(framework):
 
-    bundle = await framework.install_bundle(SIMPLE_BUNLE)
+    bundle = await framework.install_bundle(SIMPLE_BUNDLE)
 
     assert bundle == framework.get_bundle_by_id(bundle.id)
     assert bundle == framework.get_bundle_by_name(bundle.name)
@@ -52,7 +52,7 @@ async def test_install_uninstall_bundle(framework):
 
 @pytest.mark.asyncio
 async def test_install_bundle_in_resolved_framework(framework):
-    bundle = await framework.install_bundle(SIMPLE_BUNLE)
+    bundle = await framework.install_bundle(SIMPLE_BUNDLE)
     assert bundle.state == Bundle.RESOLVED
     await framework.uninstall_bundle(bundle)
 
@@ -61,7 +61,7 @@ async def test_install_bundle_in_resolved_framework(framework):
 
     await framework.start()
 
-    bundle = await framework.install_bundle(SIMPLE_BUNLE)
+    bundle = await framework.install_bundle(SIMPLE_BUNDLE)
     assert bundle.state == Bundle.RESOLVED
     await bundle.start()
     assert bundle.state == Bundle.ACTIVE
@@ -71,7 +71,7 @@ async def test_install_bundle_in_resolved_framework(framework):
 
 @pytest.mark.asyncio
 async def test_install_bundle_with_errors(framework):
-    bundle = await framework.install_bundle(SIMPLE_BUNLE)
+    bundle = await framework.install_bundle(SIMPLE_BUNDLE)
 
     await bundle.start()
     assert bundle.state == Bundle.RESOLVED

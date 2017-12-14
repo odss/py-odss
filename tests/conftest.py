@@ -1,7 +1,7 @@
 import pytest
 
-from odss import create_framework
-from odss.events import EventDispatcher
+from odss.core import create_framework
+from odss.core.events import EventDispatcher
 from tests.utils import AllListener
 
 

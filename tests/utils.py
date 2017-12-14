@@ -1,7 +1,8 @@
 
 TEXT_BUNDLE = 'tests.bundles.text'
-SIMPLE_BUNLE = 'tests.bundles.simple'
+SIMPLE_BUNDLE = 'tests.bundles.simple'
 TRANSLATE_BUNDLE = 'tests.bundles.translate'
+NO_BUNDLE = 'tests.bundles.empty'
 
 
 class Listener:

@@ -1,7 +1,7 @@
 import pytest
 
-from odss.errors import BundleException
-from odss.utils import class_name, classes_name
+from odss.core.errors import BundleException
+from odss.core.utils import class_name, classes_name
 from tests.interfaces import ITextService
 
 IECHO_NAME = 'tests.interfaces.ITextService'

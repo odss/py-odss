@@ -1,11 +1,11 @@
 import pytest
 
-from odss.errors import BundleException
-from odss.events import BundleEvent, FrameworkEvent, ServiceEvent
-from odss.registry import ServiceReference
-from odss_common import OBJECTCLASS, SERVICE_ID
+from odss.core.errors import BundleException
+from odss.core.events import BundleEvent, FrameworkEvent, ServiceEvent
+from odss.core.registry import ServiceReference
+from odss.common import OBJECTCLASS, SERVICE_ID
 
-from tests.utils import SIMPLE_BUNLE, TRANSLATE_BUNDLE
+from tests.utils import SIMPLE_BUNDLE, TRANSLATE_BUNDLE
 from tests.interfaces import ITextService
 
 
@@ -84,7 +84,7 @@ async def test_service_listener_all_interfaces(events, listener):
 @pytest.mark.asyncio
 async def test_service_listener_with_interface(framework, events, listener):
     context = framework.get_context()
-    
+
     context.add_service_listener(listener, ITextService)
     reg = await context.register_service(ITextService, 'mock service')
     await reg.unregister()
@@ -118,7 +118,7 @@ async def test_bundle_events(framework, listener):
 
     events = listener.events
 
-    bundle = await framework.install_bundle(SIMPLE_BUNLE)
+    bundle = await framework.install_bundle(SIMPLE_BUNDLE)
 
     assert events[0].kind == FrameworkEvent.INSTALLED
 

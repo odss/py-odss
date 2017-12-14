@@ -1,7 +1,7 @@
 import asyncio
 import logging
 
-from odss_common import OBJECTCLASS
+from odss.common import OBJECTCLASS
 
 from .errors import BundleException
 from .query import create_query
@@ -187,7 +187,7 @@ class ServiceListeners:
             query = create_query(query)
         except (TypeError, ValueError) as ex:
             raise BundleException('Invalid service query: {}'.format(ex))
-        
+
         info = (listener, interface, query)
         self.by_listeners[listener] = info
         self.by_interface.setdefault(interface, []).append(info)

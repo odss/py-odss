@@ -3,7 +3,7 @@ import importlib
 import logging
 import sys
 
-from odss_common import ACTIVATOR_CLASS
+from odss.common import ACTIVATOR_CLASS
 
 from .bundle import Bundle, BundleContext
 from .errors import BundleException
@@ -225,7 +225,8 @@ class Framework(Bundle):
     def __get_activator_method(self, bundle, name):
         if bundle.id not in self.__activators:
             activator = getattr(bundle.get_module(), ACTIVATOR_CLASS, None)
-            self.__activators[bundle.id] = activator()
+            instance = activator() if activator is not None else {}
+            self.__activators[bundle.id] = instance
         activator = self.__activators.get(bundle.id)
         if activator is not None:
             return getattr(activator, name, None)

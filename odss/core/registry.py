@@ -1,6 +1,6 @@
 import bisect
 
-from odss_common import (OBJECTCLASS, SERVICE_BUNDLE_ID, SERVICE_ID,
+from odss.common import (OBJECTCLASS, SERVICE_BUNDLE_ID, SERVICE_ID,
                          SERVICE_RANKING)
 
 from .errors import BundleException

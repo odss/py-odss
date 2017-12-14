@@ -1,4 +1,4 @@
-from odss.bundle import BundleContext
+from odss.core.bundle import BundleContext
 from tests.interfaces import ITranslateService
 
 
