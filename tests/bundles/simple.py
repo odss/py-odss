@@ -14,7 +14,7 @@ class Activator:
         global throw_error
         if throw_error:
             throw_error = False
-            raise Exception(':(')
+            raise Exception(":(")
 
     def stop(self, context):
         assert isinstance(context, BundleContext)
@@ -22,4 +22,4 @@ class Activator:
         global throw_error
         if throw_error:
             throw_error = False
-            raise Exception(':(')
+            raise Exception(":(")

@@ -1,9 +1,10 @@
 import pytest
 
+from odss.core import create_framework
 from odss.core.errors import BundleException
 from odss.core.events import BundleEvent, FrameworkEvent, ServiceEvent
 from odss.core.registry import ServiceReference
-from odss.common import OBJECTCLASS, SERVICE_ID
+from odss.core.consts import OBJECTCLASS, SERVICE_ID
 
 from tests.utils import SIMPLE_BUNDLE, TRANSLATE_BUNDLE
 from tests.interfaces import ITextService
@@ -12,6 +13,7 @@ from tests.interfaces import ITextService
 def test_add_incorrect_bundle_listener(events):
     class Listener:
         pass
+
     with pytest.raises(BundleException):
         events.add_bundle_listener(Listener())
 
@@ -20,13 +22,13 @@ def test_add_incorrect_bundle_listener(events):
 async def test_fire_bundle_listener(events, listener):
     assert events.add_bundle_listener(listener)
     assert not events.add_bundle_listener(listener)
-    event = BundleEvent(BundleEvent.INSTALLED, 'bundle', 'origin')
+    event = BundleEvent(BundleEvent.INSTALLED, "bundle", "origin")
     await events.fire_bundle_event(event)
     assert listener.last_event() == event
     assert len(listener) == 1
     assert event.kind == BundleEvent.INSTALLED
-    assert event.bundle == 'bundle'
-    assert event.origin == 'origin'
+    assert event.bundle == "bundle"
+    assert event.origin == "origin"
 
     assert events.remove_bundle_listener(listener)
     assert not events.remove_bundle_listener(listener)
@@ -37,13 +39,14 @@ async def test_fire_bundle_listener(events, listener):
 def test_incorrect_framework_listener(events):
     class Listener:
         pass
+
     with pytest.raises(BundleException):
         events.add_framework_listener(Listener())
 
 
 @pytest.mark.asyncio
 async def test_framework_listener(events, listener):
-    event = BundleEvent(BundleEvent.STARTING, 'bundle', 'origin')
+    event = BundleEvent(BundleEvent.STARTING, "bundle", "origin")
     assert events.add_framework_listener(listener)
     assert not events.add_framework_listener(listener)
     await events.fire_framework_event(event)
@@ -58,16 +61,14 @@ async def test_framework_listener(events, listener):
 def test_incorrect_service_listener(events):
     class Listener:
         pass
+
     with pytest.raises(BundleException):
         events.add_service_listener(Listener())
 
 
 @pytest.mark.asyncio
 async def test_service_listener_all_interfaces(events, listener):
-    reference = ServiceReference('bundle', {
-        SERVICE_ID: 1,
-        OBJECTCLASS: ['interface']
-    })
+    reference = ServiceReference("bundle", {SERVICE_ID: 1, OBJECTCLASS: ["interface"]})
     event = ServiceEvent(ServiceEvent.REGISTERED, reference)
     assert events.add_service_listener(listener)
     assert not events.add_service_listener(listener)
@@ -86,7 +87,7 @@ async def test_service_listener_with_interface(framework, events, listener):
     context = framework.get_context()
 
     context.add_service_listener(listener, ITextService)
-    reg = await context.register_service(ITextService, 'mock service')
+    reg = await context.register_service(ITextService, "mock service")
     await reg.unregister()
 
     assert len(listener) == 2
@@ -95,7 +96,8 @@ async def test_service_listener_with_interface(framework, events, listener):
 
 
 @pytest.mark.asyncio
-async def test_framework_events(framework, listener):
+async def test_framework_events(listener):
+    framework = await create_framework()
     context = framework.get_context()
     context.add_framework_listener(listener)
 
@@ -111,7 +113,6 @@ async def test_framework_events(framework, listener):
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("active")
 async def test_bundle_events(framework, listener):
     context = framework.get_context()
     context.add_bundle_listener(listener)
@@ -140,7 +141,6 @@ async def test_bundle_events(framework, listener):
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("active")
 async def test_service_events(framework, listener):
     context = framework.get_context()
     context.add_service_listener(listener)

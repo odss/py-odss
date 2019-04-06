@@ -3,7 +3,7 @@ import importlib
 import logging
 import sys
 
-from odss.common import ACTIVATOR_CLASS
+from .consts import ACTIVATOR_CLASS
 
 from .bundle import Bundle, BundleContext
 from .errors import BundleException
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class Framework(Bundle):
     def __init__(self, settings, loop=None):
-        super().__init__(self, 0, 'atto.framework', sys.modules[__name__])
+        super().__init__(self, 0, "atto.framework", sys.modules[__name__])
         self.__settings = settings
         self.__bundles = []
         self.__bundles_map = {}
@@ -28,11 +28,14 @@ class Framework(Bundle):
         contex = BundleContext(self, self, self.__events)
         self.set_context(contex)
 
+    def get_bundles(self):
+        return self.__bundles[:]
+
     def get_bundle_by_id(self, bundle_id):
         if bundle_id == 0:
             return self
         if bundle_id not in self.__bundles_map:
-            raise BundleException('Not found bundle id={}'.format(bundle_id))
+            raise BundleException("Not found bundle id={}".format(bundle_id))
         return self.__bundles_map[bundle_id]
 
     def get_bundle_by_name(self, name):
@@ -41,7 +44,7 @@ class Framework(Bundle):
         for bundle in self.__bundles:
             if bundle.name == name:
                 return bundle
-        raise BundleException('Not found bundle name={}'.format(name))
+        raise BundleException("Not found bundle name={}".format(name))
 
     def get_property(self, name):
         if name in self.__settings:
@@ -62,16 +65,15 @@ class Framework(Bundle):
 
     async def register_service(self, bundle, clazz, service, properties=None):
         if bundle is None:
-            raise BundleException('Invalid registration parameter: bundle')
+            raise BundleException("Invalid registration parameter: bundle")
         if clazz is None:
-            raise BundleException('Invalid registration parameter: clazz')
+            raise BundleException("Invalid registration parameter: clazz")
         if service is None:
-            raise BundleException('Invalid registration parameter: service')
+            raise BundleException("Invalid registration parameter: service")
 
         properties = properties.copy() if isinstance(properties, dict) else {}
 
-        registration = self.__registry.register(
-            bundle, clazz, service, properties)
+        registration = self.__registry.register(bundle, clazz, service, properties)
 
         await self.__fire_service_event(
             ServiceEvent.REGISTERED, registration.get_reference()
@@ -97,8 +99,7 @@ class Framework(Bundle):
         try:
             module_ = importlib.import_module(name)
         except (ImportError, IOError, SyntaxError) as ex:
-            raise BundleException(
-                'Error installing bundle "{0}": {1}'.format(name, ex))
+            raise BundleException('Error installing bundle "{0}": {1}'.format(name, ex))
 
         bundle_id = self.__next_id
         bundle = Bundle(self, bundle_id, name, module_)
@@ -125,9 +126,9 @@ class Framework(Bundle):
                 pass
 
     async def start(self):
-        logger.info('Start odss.framework')
+        logger.info("Start odss.framework")
         if self.state in (Bundle.STARTING, Bundle.ACTIVE):
-            logger.debug('Framework already started')
+            logger.debug("Framework already started")
             return False
 
         self._set_state(Bundle.STARTING)
@@ -138,15 +139,16 @@ class Framework(Bundle):
                 await self.start_bundle(bundle)
             except BundleException:
                 logger.exception(
-                    'Error raised while bundle starting: "%s"', bundle.name)
+                    'Error raised while bundle starting: "%s"', bundle.name
+                )
         self._set_state(Bundle.ACTIVE)
         await self.__fire_framework_event(BundleEvent.STARTED)
 
     async def stop(self):
-        logger.info('Stop odss.framework')
+        logger.info("Stop odss.framework")
 
         if self.state != Bundle.ACTIVE:
-            logger.debug('Framewok not started')
+            logger.debug("Framewok not started")
             return False
 
         self._set_state(Bundle.STOPPING)
@@ -158,9 +160,10 @@ class Framework(Bundle):
                     await self.stop_bundle(bundle)
                 except BundleException:
                     logger.exception(
-                        'Error raised while bundle stopping %s', bundle.name)
+                        "Error raised while bundle stopping %s", bundle.name
+                    )
             else:
-                logger.debug('Bundle %s already stoped', bundle)
+                logger.debug("Bundle %s already stoped", bundle)
 
         self._set_state(Bundle.RESOLVED)
         await self.__fire_framework_event(BundleEvent.STOPPED)
@@ -178,16 +181,16 @@ class Framework(Bundle):
         await self.__fire_bundle_event(BundleEvent.STARTING, bundle)
 
         try:
-            start_method = self.__get_activator_method(bundle, 'start')
+            start_method = self.__get_activator_method(bundle, "start")
             if start_method:
                 start_method = asyncio.coroutine(start_method)
                 await start_method(bundle.get_context())
-        except BundleException:
+        except BundleException as ex:
+            bundle._set_state(previous_state)
+            logger.warning("Problem with start bundle: {0}".format(ex))
+        except Exception:
             bundle._set_state(previous_state)
             raise
-        except Exception as ex:
-            bundle._set_state(previous_state)
-            raise BundleException(str(ex))
 
         bundle._set_state(Bundle.ACTIVE)
         await self.__fire_bundle_event(BundleEvent.STARTED, bundle)
@@ -203,7 +206,7 @@ class Framework(Bundle):
         await self.__fire_bundle_event(BundleEvent.STOPPING, bundle)
 
         try:
-            method = self.__get_activator_method(bundle, 'stop')
+            method = self.__get_activator_method(bundle, "stop")
             if method:
                 stoper = asyncio.coroutine(method)
                 await stoper(bundle.get_context())

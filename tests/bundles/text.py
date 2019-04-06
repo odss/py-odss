@@ -23,13 +23,15 @@ class Activator:
         self.drunk_service = DrunkEchoServcie()
         self.normal_service = NormalEchoServcie()
 
-        props = {'name': 'normal'}
+        props = {"name": "normal"}
         self.reg_normal = await context.register_service(
-            ITextService, self.normal_service, props)
+            ITextService, self.normal_service, props
+        )
 
-        props = {'name': 'drunk'}
+        props = {"name": "drunk"}
         self.reg_drunk = await context.register_service(
-            ITextService, self.drunk_service, props)
+            ITextService, self.drunk_service, props
+        )
 
     async def stop(self, context):
         assert isinstance(context, BundleContext)

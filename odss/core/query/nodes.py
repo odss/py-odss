@@ -1,6 +1,5 @@
-
 class Node:
-    def __init__(self, value=None, name=''):
+    def __init__(self, value=None, name=""):
         self.value = value
         self.name = name
 

@@ -15,17 +15,17 @@ def parse_query(query):
             pos += 1
             continue
         char = query[pos]
-        if char == '(':
+        if char == "(":
             next_char = query[pos + 1]
-            if next_char == '&':
+            if next_char == "&":
                 stack.append(nodes.AndNode())
-            elif next_char == '|':
+            elif next_char == "|":
                 stack.append(nodes.OrNode())
-            elif next_char == '!':
+            elif next_char == "!":
                 stack.append(nodes.NotNode())
             else:
                 stack.append(pos + 1)
-        elif char == ')':
+        elif char == ")":
             top = stack.pop() if stack else None
             head = stack[-1]
             if isinstance(top, nodes.Node):
@@ -38,7 +38,7 @@ def parse_query(query):
                 head.value.append(subquery(query, top, pos - 1))
             else:
                 sf = subquery(query, top, pos - 1)
-        elif not is_escaped and char == '\\':
+        elif not is_escaped and char == "\\":
             is_escaped = True
         pos += 1
     if sf:
@@ -50,24 +50,24 @@ def subquery(query, start, end):
     sub = query[start, end + 1]
 
     def check_equal(pos):
-        if query[pos] != '=':
+        if query[pos] != "=":
             raise ValueError('Expected <= in query: "{}"'.format(sub))
 
-    if sub == '*':
+    if sub == "*":
         return nodes.AllNode()
 
     if not sub:
-        raise ValueError('Empty query')
+        raise ValueError("Empty query")
 
-    for sign in list('~$^<>=*'):
+    for sign in list("~$^<>=*"):
         if sign in query:
             break
     else:
-        return nodes.PresentNode('*', sub)
+        return nodes.PresentNode("*", sub)
 
     end_name = start
     while end_name < end:
-        if query[end_name] in '=<>~':
+        if query[end_name] in "=<>~":
             break
         end_name += 1
 
@@ -78,19 +78,19 @@ def subquery(query, start, end):
     start = end_name
     char = query[start]
     is_equal = False
-    if char == '=':
+    if char == "=":
         is_equal = True
         NodeClass = nodes.EqNode
         start += 1
-    elif char == '<':
+    elif char == "<":
         check_equal(start + 1)
         NodeClass = nodes.LteNode
         start += 2
-    elif char == '>':
+    elif char == ">":
         check_equal(start + 1)
         NodeClass = nodes.GteNode
         start += 2
-    elif char == '~':
+    elif char == "~":
         check_equal(start + 1)
         NodeClass = nodes.ApproxNode
         start += 2
@@ -98,15 +98,15 @@ def subquery(query, start, end):
         raise ValueError('Unknowm query operator: "{}"'.format(sub))
 
     if start > end:
-        raise ValueError('Not found query value')
+        raise ValueError("Not found query value")
 
     value = query[start, end + 1]
     if is_equal:
-        if value == '*':
+        if value == "*":
             NodeClass = nodes.PresentNode
-        elif '*' in value:
+        elif "*" in value:
             NodeClass = nodes.SubstringNode
-            value = '.*?'.join(value.split('*'))
-            value = re.compile('^' + value + '$', re.I)
+            value = ".*?".join(value.split("*"))
+            value = re.compile("^" + value + "$", re.I)
 
     return NodeClass(value, name)

@@ -1,8 +1,7 @@
-
-TEXT_BUNDLE = 'tests.bundles.text'
-SIMPLE_BUNDLE = 'tests.bundles.simple'
-TRANSLATE_BUNDLE = 'tests.bundles.translate'
-NO_BUNDLE = 'tests.bundles.empty'
+TEXT_BUNDLE = "tests.bundles.text"
+SIMPLE_BUNDLE = "tests.bundles.simple"
+TRANSLATE_BUNDLE = "tests.bundles.translate"
+NO_BUNDLE = "tests.bundles.empty"
 
 
 class Listener:
@@ -20,19 +19,19 @@ class Listener:
 class ServiceListener(Listener):
     def service_changed(self, event):
         self.events.append(event)
-        self.names.append('service_changed')
+        self.names.append("service_changed")
 
 
 class FrameworkListener(Listener):
     def framework_changed(self, event):
         self.events.append(event)
-        self.names.append('framework_changed')
+        self.names.append("framework_changed")
 
 
 class BundleListener(Listener):
     def bundle_changed(self, event):
         self.events.append(event)
-        self.names.append('bundle_changed')
+        self.names.append("bundle_changed")
 
 
 class AllListener(FrameworkListener, BundleListener, ServiceListener):

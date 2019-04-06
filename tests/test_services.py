@@ -7,7 +7,6 @@ from tests.utils import TEXT_BUNDLE
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("active")
 async def test_install(framework):
     context = framework.get_context()
     assert isinstance(context, BundleContext)
@@ -28,27 +27,27 @@ async def test_install(framework):
     ref1 = context.get_service_reference(ITextService)
     assert ref1 is not None
 
-    query = {'name': 'drunk'}
+    query = {"name": "drunk"}
     ref2 = context.get_service_reference(ITextService, query)
     assert ref2 is not None
-    assert ref2.get_property('name') == 'drunk'
+    assert ref2.get_property("name") == "drunk"
 
-    query = {'name': 'normal'}
+    query = {"name": "normal"}
     ref2 = context.get_service_reference(ITextService, query)
     assert ref2 is not None
-    assert ref2.get_property('name') == 'normal'
+    assert ref2.get_property("name") == "normal"
 
     refs1 = context.get_service_references(ITextService)
     assert len(refs1) == 2
 
-    query = {'name': 'normal'}
+    query = {"name": "normal"}
     refs2 = context.get_service_references(ITextService, query)
     assert len(refs2) == 1
 
-    query = {'name': 'drunk'}
+    query = {"name": "drunk"}
     ref = context.get_service_reference(ITextService, query)
     service = context.get_service(ref)
-    assert service.echo('foobar') == 'raboof'
+    assert service.echo("foobar") == "raboof"
 
     context.unget_service(ref)
 
@@ -62,15 +61,14 @@ async def test_install(framework):
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("active")
 async def test_unregister_service(framework):
     context = framework.get_context()
-    registration = await context.register_service('foo', 'bar')
+    registration = await context.register_service("foo", "bar")
 
-    reference = context.get_service_reference('foo')
+    reference = context.get_service_reference("foo")
     assert reference is not None
     service = context.get_service(reference)
-    assert service == 'bar'
+    assert service == "bar"
 
     await registration.unregister()
 

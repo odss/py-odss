@@ -1,8 +1,7 @@
 import asyncio
 import logging
 
-from odss.common import OBJECTCLASS
-
+from .consts import OBJECTCLASS
 from .errors import BundleException
 from .query import create_query
 from .utils import class_name
@@ -40,7 +39,7 @@ class BundleEvent:
     # Bundle is about to deactivated.
     STOPPING = 100
 
-    __slots__ = ('__kind', '__bundle', '__origin')
+    __slots__ = ("__kind", "__bundle", "__origin")
 
     def __init__(self, kind, bundle, origin=None):
         self.__kind = kind
@@ -60,8 +59,7 @@ class BundleEvent:
         return self.__origin
 
     def __str__(self):
-        return "BundleEvent(kind={}, bundle={})"\
-            .format(self.__kind, self.__bundle)
+        return "BundleEvent(kind={}, bundle={})".format(self.__kind, self.__bundle)
 
 
 class FrameworkEvent(BundleEvent):
@@ -70,22 +68,23 @@ class FrameworkEvent(BundleEvent):
 
 class ServiceEvent:
 
-    ''' Service has been registered '''
+    """ Service has been registered """
+
     REGISTERED = 1
 
-    ''' Properties of a registered service have been modified '''
+    """ Properties of a registered service have been modified """
     MODIFIED = 2
 
-    ''' Service is in the process of being unregistered '''
+    """ Service is in the process of being unregistered """
     UNREGISTERING = 4
 
-    '''
+    """
     Properties of a registered service have been modified and the new
     properties no longer match the listener's filter
-    '''
+    """
     MODIFIED_ENDMATCH = 8
 
-    __slots__ = ('__kind', '__reference', '__properties')
+    __slots__ = ("__kind", "__reference", "__properties")
 
     def __init__(self, kind_, reference, properties=None):
         self.__kind = kind_
@@ -120,8 +119,7 @@ class Listeners:
 
     def add_listener(self, listener):
         if listener is None or not hasattr(listener, self.listener_method):
-            msg = 'Missing method: "{}" in given listener'.format(
-                self.listener_method)
+            msg = 'Missing method: "{}" in given listener'.format(self.listener_method)
             raise BundleException(msg)
 
         if listener in self.listeners:
@@ -147,8 +145,8 @@ class Listeners:
             action = asyncio.coroutine(method)
             try:
                 await action(event)
-            except Exception:
-                logger.exception('Error in listener')
+            except:
+                logger.exception("Error in listener")
 
 
 class ServiceListeners:
@@ -174,9 +172,10 @@ class ServiceListeners:
 
     def add_listener(self, listener, interface=None, query=None):
 
-        if listener is None or not hasattr(listener, 'service_changed'):
+        if listener is None or not hasattr(listener, "service_changed"):
             raise BundleException(
-                'Missing method: "service_changed" in given service listener')
+                'Missing method: "service_changed" in given service listener'
+            )
         if interface is not None:
             interface = class_name(interface)
         if listener in self.by_listeners:
@@ -186,7 +185,7 @@ class ServiceListeners:
         try:
             query = create_query(query)
         except (TypeError, ValueError) as ex:
-            raise BundleException('Invalid service query: {}'.format(ex))
+            raise BundleException("Invalid service query: {}".format(ex))
 
         info = (listener, interface, query)
         self.by_listeners[listener] = info
@@ -212,22 +211,21 @@ class ServiceListeners:
                 previous = event.previous_properties
                 if query.match(previous):
                     event = ServiceEvent(
-                        ServiceEvent.MODIFIED_ENDMATCH,
-                        event.reference, previous
+                        ServiceEvent.MODIFIED_ENDMATCH, event.reference, previous
                     )
                     await action(event)
 
 
 class EventDispatcher:
     def __init__(self):
-        self.framework = Listeners('framework_changed')
-        self.bundles = Listeners('bundle_changed')
+        self.framework = Listeners("framework_changed")
+        self.bundles = Listeners("bundle_changed")
         self.services = ServiceListeners()
 
     def clear(self):
-        '''
+        """
         Remove all listeners
-        '''
+        """
         self.framework.clear()
         self.bundles.clear()
         self.services.clear()

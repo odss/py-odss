@@ -15,14 +15,16 @@ async def test_initial_framework():
     assert bundle == framework
 
     with pytest.raises(BundleException):
-        framework.get_bundle_by_name('test')
+        framework.get_bundle_by_name("test")
 
     with pytest.raises(BundleException):
         framework.get_bundle_by_id(1)
 
 
 @pytest.mark.asyncio
-async def test_start_and_stop(framework):
+async def test_start_and_stop():
+    framework = await create_framework()
+
     assert framework.state == Bundle.RESOLVED
 
     await framework.start()
@@ -35,7 +37,6 @@ async def test_start_and_stop(framework):
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("active")
 async def test_install_uninstall_bundle(framework):
 
     bundle = await framework.install_bundle(SIMPLE_BUNDLE)
@@ -72,20 +73,19 @@ async def test_install_bundle_in_resolved_framework(framework):
 @pytest.mark.asyncio
 async def test_install_bundle_with_errors(framework):
     bundle = await framework.install_bundle(SIMPLE_BUNDLE)
-
-    await bundle.start()
     assert bundle.state == Bundle.RESOLVED
 
-    await framework.start()
+    await bundle.start()
     assert bundle.state == Bundle.ACTIVE
 
     await bundle.start()
     assert bundle.state == Bundle.ACTIVE
+
     await bundle.stop()
     assert bundle.state == Bundle.RESOLVED
 
     bundle.get_module().throw_error = True
-    with pytest.raises(BundleException):
+    with pytest.raises(Exception):
         await bundle.start()
     assert bundle.state == Bundle.RESOLVED
 
@@ -93,7 +93,7 @@ async def test_install_bundle_with_errors(framework):
     assert bundle.state == Bundle.ACTIVE
 
     bundle.get_module().throw_error = True
-    with pytest.raises(BundleException):
+    with pytest.raises(Exception):
         await bundle.stop()
     assert bundle.state == Bundle.ACTIVE
 

@@ -49,9 +49,9 @@ class Bundle:
         self.__context = None
 
     def __str__(self):
-        '''
+        """
         String representation
-        '''
+        """
         return "Bundle(id={0}, name={1})".format(self.__id, self.__name)
 
     def _set_state(self, state):
@@ -59,7 +59,6 @@ class Bundle:
 
 
 class BundleContext:
-
     def __init__(self, framework, bundle, events):
         self.__framework = framework
         self.__bundle = bundle
@@ -71,9 +70,8 @@ class BundleContext:
     def get_bundle(self, bundle_id=None) -> Bundle:
         return self.__framework.get_bundle_by_id(bundle_id)
 
-    @property
-    def bundles(self):
-        return self.__framework.bundles
+    def get_bundles(self):
+        return self.__framework.get_bundles()
 
     def get_property(self, name: str):
         return self.__framework.get_property(name)
@@ -95,7 +93,8 @@ class BundleContext:
 
     async def register_service(self, clazz, service, properties=None):
         return await self.__framework.register_service(
-            self.__bundle, clazz, service, properties)
+            self.__bundle, clazz, service, properties
+        )
 
     def add_framework_listener(self, listener):
         return self.__events.framework.add_listener(listener)
