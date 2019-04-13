@@ -1,5 +1,5 @@
 from odss.cdi.decorators import Component, Provides, Bind, Unbind, Validate, Invalidate
-from .interfaces import IService, IStorage, IListener
+from .interfaces import IService, IStorage, IListener, IManager
 
 
 @Component
@@ -20,7 +20,11 @@ class MyListener:
     pass
 
 
+EVENTS = []
+
+
 @Component
+@Provides(IManager)
 class ManagerComponent:
     def __init__(self, service: IService, storage: IStorage):
         self.service = service
@@ -28,16 +32,16 @@ class ManagerComponent:
 
     @Bind
     def add_listener(self, listener: IListener):
-        pass
+        EVENTS.append(("add_listener", listener))
 
     @Unbind
     def remove_listener(self, listener: IListener):
-        pass
+        EVENTS.append(("remove_listener", listener))
 
     @Validate
     def validate(self, ctx):
-        pass
+        EVENTS.append(("validate", ctx))
 
     @Invalidate
     def invalidate(self, ctx):
-        pass
+        EVENTS.append(("invalidate", ctx))

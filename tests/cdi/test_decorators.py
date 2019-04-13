@@ -148,5 +148,5 @@ def test_validate():
             pass
 
     context = get_factory_context(Dummy)
-    assert Dummy.validate == context.get_callback(consts.CALLBACK_VALIDATE)
-    assert Dummy.invalidate == context.get_callback(consts.CALLBACK_INVALIDATE)
+    assert Dummy.validate == context.get_callback(consts.CALLBACK_VALIDATE)[0]
+    assert Dummy.invalidate == context.get_callback(consts.CALLBACK_INVALIDATE)[0]

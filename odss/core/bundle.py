@@ -1,7 +1,9 @@
+import typing as t
+
 from .events import ServiceEvent
 
 
-class Bundle:
+class IBundle:
 
     UNINSTALLED = 1
     INSTALLED = 2
@@ -10,6 +12,79 @@ class Bundle:
     STOPPING = 16
     ACTIVE = 32
 
+    @property
+    def id(self) -> str:
+        pass
+
+    @property
+    def state(self) -> int:
+        pass
+
+    @property
+    def name(self) -> str:
+        pass
+
+    def get_module(self) -> object:
+        pass
+
+    async def start(self) -> None:
+        pass
+
+    async def stop(self) -> None:
+        pass
+
+
+class IBundleContext:
+    def get_bundle(self, bundle_id: int = None) -> IBundle:
+        pass
+
+    def get_bundles(self) -> t.Iterable[IBundle]:
+        pass
+
+    def get_property(self, name: str) -> str:
+        pass
+
+    def get_service(self, reference) -> t.Any:
+        pass
+
+    def unget_service(self, reference) -> None:
+        pass
+
+    def get_service_reference(self, clazz, filter=None):
+        pass
+
+    def get_service_references(self, clazz, filter=None):
+        pass
+
+    async def install_bundle(self, name, path=None):
+        pass
+
+    async def register_service(self, clazz, service, properties=None):
+        pass
+
+    def add_framework_listener(self, listener):
+        pass
+
+    def add_bundle_listener(self, listener):
+        pass
+
+    def add_service_listener(self, listener, interface=None, filter=None):
+        pass
+
+    def remove_framework_listener(self, listener):
+        pass
+
+    def remove_bundle_listener(self, listener):
+        pass
+
+    def remove_service_listener(self, listener):
+        pass
+
+    async def __fire_service_event(self, kind, reference):
+        pass
+
+
+class Bundle(IBundle):
     def __init__(self, framework, bundle_id, name, py_module):
         self.__framework = framework
         self.__id = bundle_id

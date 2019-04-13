@@ -8,3 +8,7 @@ class IListener:
 
 class IStorage:
     pass
+
+
+class IManager:
+    pass

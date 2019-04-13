@@ -123,7 +123,7 @@ class Listeners:
             raise BundleException(msg)
 
         if listener in self.listeners:
-            logger.warning('Already known listener "%s"', listener)
+            logger.info('Already known listener "%s"', listener)
             return False
 
         self.listeners.append(listener)
@@ -179,7 +179,7 @@ class ServiceListeners:
         if interface is not None:
             interface = class_name(interface)
         if listener in self.by_listeners:
-            logger.warning('Already known service listener "%s"', listener)
+            logger.info('Already known service listener "%s"', listener)
             return False
 
         try:

@@ -1,17 +1,17 @@
-from .errors import BundleException
+import inspect
 
 
-def class_name(clazz):
-    if isinstance(clazz, str):
-        return clazz
-    module = getattr(clazz, "__module__", "")
-    name = getattr(clazz, "__name__", "")
-    if not module and not name:
-        raise BundleException('Invalid class name: "{}"'.format(clazz))
-    return "{}.{}".format(module, name)
+def class_name(specification):
+    if not specification:
+        raise ValueError("No specifications given")
+    if inspect.isclass(specification):
+        return "{0}.{1}".format(specification.__module__, specification.__qualname__)
+    if isinstance(specification, str):
+        return specification
+    raise ValueError("Unknow specifications type: {}".format(type(specification)))
 
 
-def classes_name(classes):
-    if isinstance(classes, (tuple, list)):
-        return tuple((class_name(clazz) for clazz in classes))
-    return (class_name(classes),)
+def classes_name(specifications):
+    if isinstance(specifications, (tuple, list)):
+        return tuple(class_name(specification) for specification in specifications)
+    return (class_name(specifications),)

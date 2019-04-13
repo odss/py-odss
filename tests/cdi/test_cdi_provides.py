@@ -1,23 +1,24 @@
 import pytest
 
-from tests.cdi.interfaces import IService, IStorage, IListener
+from tests.cdi.interfaces import IService, IStorage, IListener, IManager
 
 
 @pytest.mark.asyncio
+@pytest.mark.usefixtures("cdi")
 async def test_priovides_services(framework):
-    bundle = await framework.install_bundle("odss.cdi.core")
-    await bundle.start()
-
     bundle = await framework.install_bundle("tests.cdi.components")
     await bundle.start()
 
-    refs = framework.find_service_references(IService)
+    refs = framework.find_service_references(IManager)
     assert len(refs) == 1
 
     refs = framework.find_service_references(IStorage)
     assert len(refs) == 1
 
     refs = framework.find_service_references(IListener)
+    assert len(refs) == 1
+
+    refs = framework.find_service_references(IManager)
     assert len(refs) == 1
 
     await bundle.stop()
@@ -30,3 +31,8 @@ async def test_priovides_services(framework):
 
     refs = framework.find_service_references(IListener)
     assert len(refs) == 0
+
+    refs = framework.find_service_references(IManager)
+    assert len(refs) == 0
+
+    await framework.uninstall_bundle(bundle)

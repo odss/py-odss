@@ -30,7 +30,7 @@ class RequiresHandlerFactory:
 class RequiresHandlerService(IHandler):
     def __init__(self, specifications: t.Iterable[str]) -> None:
         self.specifications = specifications
-        print("RequiresHandlerService", specifications)
+        # print("RequiresHandlerService", specifications)
         self.trackers = []
 
     def setup(self, component: ComponentManager):
@@ -73,7 +73,7 @@ class SpecificationsTracker(ServiceTracker):
         return self.service is not None
 
     async def on_adding_service(self, reference, service):
-        print("on_adding_service2", service)
+        # print("on_adding_service2", service)
         if self.service is None:
             self.service = service
             self.ref = reference
@@ -83,7 +83,7 @@ class SpecificationsTracker(ServiceTracker):
         pass
 
     async def on_removed_service(self, reference, service):
-        print("on_removed_service2", service)
+        # print("on_removed_service2", service)
         if self.service == service:
             self.service = None
             self.ref = None

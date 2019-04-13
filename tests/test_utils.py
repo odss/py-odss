@@ -11,7 +11,7 @@ def test_class_name():
     assert class_name("foo.bar") == "foo.bar"
     assert class_name(ITextService) == IECHO_NAME
 
-    with pytest.raises(BundleException):
+    with pytest.raises(ValueError):
         assert class_name({})
 
 
