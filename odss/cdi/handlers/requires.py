@@ -1,6 +1,6 @@
 import typing as t
 
-from odss.core.bundle import Bundle, BundleContext
+from odss.core.bundle import BundleContext
 from odss.core.trackers import ServiceTracker
 
 from ..consts import PROP_HANDLER_NAME, HANDLER_REQUIRES

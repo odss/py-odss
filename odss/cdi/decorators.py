@@ -1,7 +1,4 @@
 import inspect
-import functools
-import logging
-import types
 import typing as t
 
 from odss.core.utils import classes_name
@@ -60,7 +57,6 @@ def Requires(*specifications):
 
 def Instantiate(name, properties=None):
     if inspect.isclass(name):
-        clazz = name
         get_factory_context(name).add_instance(name.__name__)
         return name
 

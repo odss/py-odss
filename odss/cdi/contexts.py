@@ -4,7 +4,7 @@ import collections
 import typing as t
 
 from odss.core.bundle import Bundle, BundleContext
-from odss.core.utils import class_name, classes_name
+from odss.core.utils import class_name
 
 from . import consts
 

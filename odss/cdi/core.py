@@ -105,7 +105,7 @@ class CdiService:
     def _valid_factory_name(self, factory_name: str) -> None:
         if not factory_name or not isinstance(factory_name, str):
             raise ValueError(
-                "Factory name must be non-empty string. ({})".format(factory_class)
+                "Factory name must be non-empty string. ({})".format(factory_name)
             )
         if factory_name in self.__factories:
             raise ValueError("'{0}' factory already exist".format(factory_name))
@@ -127,7 +127,7 @@ class CdiService:
             await self.unregister_factory(factory_name)
 
     async def unregister_factory(self, factory_name: str) -> None:
-        factory_class = self.__factories.pop(factory_name)
+        self.__factories.pop(factory_name)
         to_remove = self._get_instances_by_factory(factory_name)
         for instance_name in to_remove:
             instance = self.__instances.pop(instance_name)

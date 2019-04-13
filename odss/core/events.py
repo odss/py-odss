@@ -145,7 +145,7 @@ class Listeners:
             action = asyncio.coroutine(method)
             try:
                 await action(event)
-            except:
+            except Exception:
                 logger.exception("Error in listener")
 
 

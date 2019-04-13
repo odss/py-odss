@@ -8,9 +8,6 @@ class IComponentManager:
     def get_bundle_context(self) -> BundleContext:
         pass
 
-    def get_bundle_context(self) -> BundleContext:
-        pass
-
     def set_requirements(self, requirements):
         pass
 
