@@ -2,7 +2,8 @@ import pytest
 
 from odss.core import create_framework
 from odss.core.events import EventDispatcher
-from tests.utils import AllListener
+from odss.core.loop import TaskRunner
+from tests.utils import ServiceListener, AllListener
 
 
 @pytest.fixture()
@@ -12,6 +13,9 @@ def listener():
     """
     return AllListener()
 
+
+def service_listener():
+    return ServiceListener()
 
 @pytest.fixture()
 @pytest.mark.asyncio
@@ -26,8 +30,8 @@ async def framework():
 
 
 @pytest.fixture()
-def events():
+def events(event_loop):
     """
     Create EventDispatcher instance
     """
-    return EventDispatcher()
+    return EventDispatcher(TaskRunner(event_loop))

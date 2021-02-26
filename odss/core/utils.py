@@ -12,6 +12,6 @@ def class_name(specification):
 
 
 def classes_name(specifications):
-    if isinstance(specifications, (tuple, list)):
-        return tuple(class_name(specification) for specification in specifications)
-    return (class_name(specifications),)
+    if not isinstance(specifications, (tuple, list)):
+        specifications = [specifications]
+    return tuple(class_name(specification) for specification in specifications)

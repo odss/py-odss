@@ -9,6 +9,7 @@ from odss.core.consts import OBJECTCLASS, SERVICE_ID
 from tests.utils import SIMPLE_BUNDLE, TRANSLATE_BUNDLE
 from tests.interfaces import ITextService
 
+pytestmark = pytest.mark.asyncio
 
 def test_add_incorrect_bundle_listener(events):
     class Listener:
@@ -42,6 +43,21 @@ def test_incorrect_framework_listener(events):
 
     with pytest.raises(BundleException):
         events.add_framework_listener(Listener())
+
+
+async def test_error_in_listener(events, listener):
+    class ErrorListener:
+        def bundle_changed(self, event):
+            raise Exception('buu')
+
+    events.add_bundle_listener(ErrorListener())
+    events.add_bundle_listener(listener)
+    event = BundleEvent(BundleEvent.INSTALLED, "bundle", "origin")
+
+    await events.fire_bundle_event(event)
+
+    assert listener.last_event() == event
+    assert len(listener) == 1
 
 
 @pytest.mark.asyncio

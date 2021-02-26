@@ -2,7 +2,7 @@ import re
 
 from . import nodes
 
-
+# flake8: noqa: C901
 def parse_query(query):
     query = query.trim()
     size = len(query)
@@ -45,7 +45,7 @@ def parse_query(query):
         return sf
     raise ValueError('Incorect query: "{}"'.format(query))
 
-
+# flake8: noqa: C901
 def subquery(query, start, end):
     sub = query[start, end + 1]
 

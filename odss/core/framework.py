@@ -1,32 +1,40 @@
 import asyncio
-import importlib
 import logging
 import sys
+import signal
 
 from .consts import ACTIVATOR_CLASS
 
+from .loader import load_bundle, unload_bundle
 from .bundle import Bundle, BundleContext
 from .errors import BundleException
 from .events import BundleEvent, EventDispatcher, FrameworkEvent, ServiceEvent
 from .registry import ServiceRegistry
+from .loop import TaskRunner
+
 
 logger = logging.getLogger(__name__)
 
 
 class Framework(Bundle):
-    def __init__(self, settings, loop=None):
+    def __init__(self, properties, loop=None):
         super().__init__(self, 0, "atto.framework", sys.modules[__name__])
-        self.__settings = settings
+        self.loop: asyncio.events.AbstractEventLoop = asyncio.get_event_loop()
+        self.__properties = properties
         self.__bundles = []
         self.__bundles_map = {}
         self.__next_id = 1
+        self.__runner = TaskRunner(self.loop)
         self.__registry = ServiceRegistry(self)
-        self.__events = EventDispatcher()
+        self.__events = EventDispatcher(self.__runner)
 
         self.__activators = {}
 
         contex = BundleContext(self, self, self.__events)
         self.set_context(contex)
+
+    def create_task(self, target, *args):
+        return self.__runner.create_task(target, *args)
 
     def get_bundles(self):
         return self.__bundles[:]
@@ -47,8 +55,8 @@ class Framework(Bundle):
         raise BundleException("Not found bundle name={}".format(name))
 
     def get_property(self, name):
-        if name in self.__settings:
-            return self.__settings[name]
+        if name in self.__properties:
+            return self.__properties[name]
         raise KeyError('Not found property: "{}"'.format(name))
 
     def get_service(self, bundle, reference):
@@ -96,10 +104,7 @@ class Framework(Bundle):
                 logger.debug('Already installed bundle: "%s"', name)
                 return
 
-        try:
-            module_ = importlib.import_module(name)
-        except (ImportError, IOError, SyntaxError) as ex:
-            raise BundleException('Error installing bundle "{0}": {1}'.format(name, ex))
+        module_ = await self.create_task(load_bundle, name, path)
 
         bundle_id = self.__next_id
         bundle = Bundle(self, bundle_id, name, module_)
@@ -120,12 +125,9 @@ class Framework(Bundle):
             self.__bundles.remove(bundle)
             if bundle.id in self.__activators:
                 del self.__activators[bundle.id]
-            try:
-                del sys.modules[bundle.name]
-            except KeyError:
-                pass
+            unload_bundle(bundle.name)
 
-    async def start(self):
+    async def start(self, attach_signals=False):
         logger.info("Start odss.framework")
         if self.state in (Bundle.STARTING, Bundle.ACTIVE):
             logger.debug("Framework already started")
@@ -144,8 +146,14 @@ class Framework(Bundle):
         self._set_state(Bundle.ACTIVE)
         await self.__fire_framework_event(BundleEvent.STARTED)
 
+        if attach_signals:
+            self._stopped = asyncio.Event()
+            register_signal_handling(self)
+
+            await self._stopped.wait()
+
     async def stop(self):
-        logger.info("Stop odss.framework")
+        print("Stop odss.framework")
 
         if self.state != Bundle.ACTIVE:
             logger.debug("Framewok not started")
@@ -167,6 +175,8 @@ class Framework(Bundle):
 
         self._set_state(Bundle.RESOLVED)
         await self.__fire_framework_event(BundleEvent.STOPPED)
+        if hasattr(self, "_stopped"):
+            self._stopped.set()
 
     async def start_bundle(self, bundle):
         if self.state not in (Bundle.STARTING, Bundle.ACTIVE):
@@ -183,8 +193,11 @@ class Framework(Bundle):
         try:
             start_method = self.__get_activator_method(bundle, "start")
             if start_method:
-                start_method = asyncio.coroutine(start_method)
-                await start_method(bundle.get_context())
+                await self.create_task(start_method, context)
+                # if asyncio.iscoroutinefunction(start_method):
+                #     await self.loop.create_task(start_method(context))
+                # else:
+                #     await self.loop.run_in_executor(None, start_method, context)
         except BundleException as ex:
             bundle._set_state(previous_state)
             logger.warning("Problem with start bundle: {0}".format(ex))
@@ -206,10 +219,15 @@ class Framework(Bundle):
         await self.__fire_bundle_event(BundleEvent.STOPPING, bundle)
 
         try:
-            method = self.__get_activator_method(bundle, "stop")
-            if method:
-                stoper = asyncio.coroutine(method)
-                await stoper(bundle.get_context())
+            stop_method = self.__get_activator_method(bundle, "stop")
+            if stop_method:
+                context = bundle.get_context()
+                await self.create_task(stop_method, context)
+
+                # if asyncio.iscoroutinefunction(stop_method):
+                #     await self.loop.create_task(stop_method(context))
+                # else:
+                #     await self.loop.run_in_executor(None, stop_method, context)
         except BundleException:
             bundle._set_state(previous_state)
             raise
@@ -243,3 +261,25 @@ class Framework(Bundle):
 
     async def __fire_service_event(self, kind, reference):
         await self.__events.services.fire_event(ServiceEvent(kind, reference))
+
+
+def register_signal_handling(framework) -> None:
+    def signal_handle(exit_code: int) -> None:
+        framework.loop.remove_signal_handler(signal.SIGTERM)
+        framework.loop.remove_signal_handler(signal.SIGINT)
+        framework.loop.create_task(framework.stop())
+
+    try:
+        framework.loop.add_signal_handler(signal.SIGTERM, signal_handle, 0)
+    except ValueError:
+        logger.warning("Could not bind to SIGTERM")
+
+    try:
+        framework.loop.add_signal_handler(signal.SIGINT, signal_handle, 0)
+    except ValueError:
+        logger.warning("Could not bind to SIGINT")
+
+    try:
+        framework.loop.add_signal_handler(signal.SIGHUP, signal_handle, 543)
+    except ValueError:
+        logger.warning("Could not bind to SIGHUP")

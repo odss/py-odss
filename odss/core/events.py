@@ -110,7 +110,8 @@ class ServiceEvent:
 
 
 class Listeners:
-    def __init__(self, listener_method):
+    def __init__(self, runner, listener_method):
+        self.runner = runner
         self.listeners = []
         self.listener_method = listener_method
 
@@ -139,18 +140,18 @@ class Listeners:
             return False
 
     async def fire_event(self, event):
+        loop = asyncio.get_event_loop()
         listeners = self.listeners[:]
-        for listener in listeners:
-            method = getattr(listener, self.listener_method)
-            action = asyncio.coroutine(method)
-            try:
-                await action(event)
-            except Exception:
-                logger.exception("Error in listener")
+        tasks = [
+            (getattr(listener, self.listener_method), event)
+            for listener in listeners
+        ]
+        await self.runner.collect_tasks(tasks)
 
 
 class ServiceListeners:
-    def __init__(self):
+    def __init__(self, runner):
+        self.runner = runner
         self.by_interface = {}
         self.by_listeners = {}
 
@@ -203,24 +204,28 @@ class ServiceListeners:
             except KeyError:
                 pass
 
+        tasks = []
         for listener, interface, query in listeners:
-            action = asyncio.coroutine(listener.service_changed)
+            method = listener.service_changed
             if query.match(properties):
-                await action(event)
+                tasks.append((method, event))
             elif event.kind == ServiceEvent.MODIFIED:
                 previous = event.previous_properties
                 if query.match(previous):
                     event = ServiceEvent(
-                        ServiceEvent.MODIFIED_ENDMATCH, event.reference, previous
+                        ServiceEvent.MODIFIED_ENDMATCH,
+                        event.reference,
+                        previous
                     )
-                    await action(event)
+                    tasks.append((method, event))
+        await self.runner.collect_tasks(tasks)
 
 
 class EventDispatcher:
-    def __init__(self):
-        self.framework = Listeners("framework_changed")
-        self.bundles = Listeners("bundle_changed")
-        self.services = ServiceListeners()
+    def __init__(self, runner):
+        self.framework = Listeners(runner, "framework_changed")
+        self.bundles = Listeners(runner, "bundle_changed")
+        self.services = ServiceListeners(runner)
 
     def clear(self):
         """
