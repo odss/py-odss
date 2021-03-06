@@ -107,7 +107,7 @@ class Bundle(IBundle):
 
     @property
     def version(self):
-        return '0.0.0'
+        return "0.0.0"
 
     @property
     def location(self):
@@ -148,6 +148,7 @@ class Bundle(IBundle):
 
     def get_using_services(self):
         return self.__framework.get_bundle_using_services(self)
+
 
 class BundleContext:
     def __init__(self, framework, bundle, events):

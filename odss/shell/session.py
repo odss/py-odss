@@ -1,4 +1,3 @@
-import sys
 import os
 import typing as t
 
@@ -6,11 +5,10 @@ from prompt_toolkit import PromptSession
 from prompt_toolkit.patch_stdout import patch_stdout
 from prompt_toolkit.history import FileHistory
 
-from .stream import get_standard_streams
 
 class Session:
     def __init__(self):
-        file_path = os.path.abspath('.odsshistory')
+        file_path = os.path.abspath(".odsshistory")
         self.prompt_session = PromptSession(history=FileHistory(file_path))
 
     def write_line(self, data: str, flush=True) -> t.Awaitable[None]:

@@ -99,12 +99,12 @@ class ServiceRegistry:
         except KeyError:
             pass
 
-
     def get_bundle_references(self, bundle):
         return self._bundle_services.get(bundle, [])
 
     def get_bundle_using_services(self, bundle):
         return list(self._bundle_unsing.get(bundle, {}).keys())
+
 
 class ServiceReference:
     def __init__(self, bundle, properties):

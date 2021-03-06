@@ -10,7 +10,7 @@ def parse_query(query):
     if not query:
         raise ValueError('Incorect query: "{}"'.format(query))
 
-    if query[0] != '(' and query[-1] != ')':
+    if query[0] != "(" and query[-1] != ")":
         query = "({})".format(query)
         size = len(query)
 
@@ -57,7 +57,7 @@ def parse_query(query):
 
 # flake8: noqa: C901
 def subquery(query, start, end):
-    sub = query[start:end + 1]
+    sub = query[start : end + 1]
 
     def check_equal(pos):
         if query[pos] != "=":
@@ -110,7 +110,7 @@ def subquery(query, start, end):
     if start > end:
         raise ValueError("Not found query value")
 
-    value = query[start:end + 1]
+    value = query[start : end + 1]
     if is_equal:
         if value == "*":
             NodeClass = nodes.PresentNode

@@ -3,6 +3,7 @@ from . import SERVICE_SHELL, SERVICE_SHELL_COMMAND
 from .shell import Shell
 from .utils import make_ascii_table, bundle_state_name
 
+
 class Activator:
     def __init__(self):
         pass
@@ -29,12 +30,12 @@ class ServiceShell(Shell):
         super().__init__(ctx)
         self.register_command("bl", self.bundles_list)
         self.register_command("bd", self.bundle_details)
-        self.register_command('sl', self.services_list)
-        self.register_command('sd', self.service_details)
-        self.register_command('install', self.install_bundle)
-        self.register_command('uninstall', self.uninstall_bundle)
-        self.register_command('start', self.start_bundle)
-        self.register_command('stop', self.stop_bundle)
+        self.register_command("sl", self.services_list)
+        self.register_command("sd", self.service_details)
+        self.register_command("install", self.install_bundle)
+        self.register_command("uninstall", self.uninstall_bundle)
+        self.register_command("start", self.start_bundle)
+        self.register_command("stop", self.stop_bundle)
 
     def bind_command(self):
         pass
@@ -47,13 +48,11 @@ class ServiceShell(Shell):
         List all installed bundles
         """
         bundles = self.ctx.get_bundles()
-        header = ('ID', 'Name', 'State', 'Version')
-        lines = [(
-            bundle.id,
-            bundle.name,
-            bundle_state_name(bundle.state),
-            bundle.version
-        ) for bundle in bundles]
+        header = ("ID", "Name", "State", "Version")
+        lines = [
+            (bundle.id, bundle.name, bundle_state_name(bundle.state), bundle.version)
+            for bundle in bundles
+        ]
         output = make_ascii_table(header, lines)
         session.write_line(output)
 
@@ -95,12 +94,15 @@ class ServiceShell(Shell):
         """
         refs = self.ctx.get_service_references(spec)
         header = ("ID", "Classes", "Bundle", "Ranking")
-        lines = [(
+        lines = [
+            (
                 str(ref.get_property(SERVICE_ID)),
                 str(ref.get_property(OBJECTCLASS)),
                 str(ref.get_bundle()),
-                str(ref.get_property(SERVICE_RANKING))
-        ) for ref in refs]
+                str(ref.get_property(SERVICE_RANKING)),
+            )
+            for ref in refs
+        ]
         output = make_ascii_table(header, lines)
         session.write_line(output)
 
@@ -108,9 +110,7 @@ class ServiceShell(Shell):
         """
         Show service details
         """
-        ref = self.ctx.get_service_reference(
-            None, {SERVICE_ID: int(service_id)}
-        )
+        ref = self.ctx.get_service_reference(None, {SERVICE_ID: int(service_id)})
         if not ref:
             session.write_line(f"Service not found: {service_id}")
             return False
@@ -147,7 +147,9 @@ class ServiceShell(Shell):
         if bundle is None:
             session.write_line("Unknown bundle ID: {0}", bundle_id)
             return False
-        session.write_line("Uninstalling [Bundle id={0} name={1}]".format(bundle.id, bundle.name))
+        session.write_line(
+            "Uninstalling [Bundle id={0} name={1}]".format(bundle.id, bundle.name)
+        )
         await bundle.uninstall()
 
     async def start_bundle(self, session, bundle_id):
@@ -158,7 +160,9 @@ class ServiceShell(Shell):
         if bundle is None:
             session.write_line("Unknown bundle ID: {0}", bundle_id)
             return False
-        session.write_line("Starting [Bundle id={0} name={1}]".format(bundle.id, bundle.name))
+        session.write_line(
+            "Starting [Bundle id={0} name={1}]".format(bundle.id, bundle.name)
+        )
         await bundle.start()
 
     async def stop_bundle(self, session, bundle_id):
@@ -169,5 +173,7 @@ class ServiceShell(Shell):
         if bundle is None:
             session.write_line("Unknown bundle ID: {0}", bundle_id)
             return False
-        session.write_line("Stoping [Bundle id={0} name={1}]".format(bundle.id, bundle.name))
+        session.write_line(
+            "Stoping [Bundle id={0} name={1}]".format(bundle.id, bundle.name)
+        )
         await bundle.stop()

@@ -7,14 +7,14 @@ from odss.shell.session import Session
 class TestSession(Session):
     def __init__(self):
         super().__init__()
-        self.output = ''
+        self.output = ""
         self.buff = []
 
     def write(self, data: str):
         self.buff.append(data)
 
     def flush(self):
-        self.output = ''.join(self.buff)
+        self.output = "".join(self.buff)
         self.buff = []
 
 

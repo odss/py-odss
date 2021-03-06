@@ -17,6 +17,7 @@ def listener():
 def service_listener():
     return ServiceListener()
 
+
 @pytest.fixture()
 @pytest.mark.asyncio
 async def framework():

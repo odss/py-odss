@@ -16,18 +16,23 @@ DEFAULT_NAMESPACE = "default"
 class CommandContext:
     pass
 
+
 class CompleteEvent:
     pass
 
+
 class Completion:
     pass
+
 
 class ICommand(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     async def execute(self, context: CommandContext) -> None:
         pass
 
-    async def completions(self, event: CompleteEvent) -> t.AsyncGenerator[Completion, None]:
+    async def completions(
+        self, event: CompleteEvent
+    ) -> t.AsyncGenerator[Completion, None]:
         while False:
             yield
 
@@ -42,8 +47,9 @@ class Shell:
         self.register_command("quit", self.quit)
         self.register_command("exit", self.quit)
 
-
-    def register_command(self, name: str, handler: t.Any, namespace: str = DEFAULT_NAMESPACE) -> bool:
+    def register_command(
+        self, name: str, handler: t.Any, namespace: str = DEFAULT_NAMESPACE
+    ) -> bool:
         name = (name or "").strip().lower()
         namespace = (namespace or "").strip().lower()
 
@@ -53,7 +59,7 @@ class Shell:
 
         space = self._commands[namespace]
         if name in space:
-            logger.error(f'Command already registered: {namespace}.{name}')
+            logger.error(f"Command already registered: {namespace}.{name}")
             return False
 
         space[name] = handler
@@ -67,12 +73,12 @@ class Shell:
         assert namespace, "No command namespace"
 
         if namespace in self._commands and name in self._commands[namespace]:
-                del self._commands[namespace][name]
+            del self._commands[namespace][name]
 
-                if not self._commands[namespace]:
-                    del self._commands[namespace]
+            if not self._commands[namespace]:
+                del self._commands[namespace]
 
-                return True
+            return True
 
         return False
 
@@ -94,10 +100,9 @@ class Shell:
         if not line_parts:
             return False
 
-
         args, kwargs = build_params(line_parts[1:])
 
-        error_msg = ''
+        error_msg = ""
         try:
             namespace, name = self._parse_command_name(line_parts[0])
             command_handler = self._commands[namespace][name]
@@ -165,7 +170,9 @@ class Shell:
         raise KeyboardInterrupt()
 
 
-def split_command_name(name: str, default_namespace=DEFAULT_NAMESPACE) -> t.Tuple[str, str]:
+def split_command_name(
+    name: str, default_namespace=DEFAULT_NAMESPACE
+) -> t.Tuple[str, str]:
     parts = name.split(".")
     if len(parts) == 1:
         return default_namespace, parts[0].lower()
@@ -176,8 +183,8 @@ def build_params(params):
     args, kwargs = [], {}
     for param in params:
         if "=" in param:
-            pos = param.find('=')
-            key, value = param[:pos], param[pos+1:]
+            pos = param.find("=")
+            key, value = param[:pos], param[pos + 1:]
             kwargs[key] = value
         else:
             args.append(param)
@@ -185,6 +192,7 @@ def build_params(params):
 
 
 MethodInfo = collections.namedtuple("MethodInfo", "args vargs kwargs doc")
+
 
 def get_method_info(method):
     args = []

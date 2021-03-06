@@ -4,21 +4,28 @@ BUNDLE_STATE = {
     "4": "RESOLVED",
     "8": "STARTING",
     "16": "STOPPING",
-    "32": "ACTIVE"
+    "32": "ACTIVE",
 }
+
 
 def bundle_state_name(state):
     return BUNDLE_STATE[str(state)]
 
+
 def _sep_top(sizes):
-    line = "┬".join(["─"*(size+2) for size in sizes])
+    line = "┬".join(["─" * (size + 2) for size in sizes])
     return f"┌{line}┐"
+
+
 def _sep_mid(sizes):
-    line = "┼".join(["─"*(size+2) for size in sizes])
+    line = "┼".join(["─" * (size + 2) for size in sizes])
     return f"├{line}┤"
+
+
 def _sep_bottom(sizes):
-    line = "┴".join(["─"*(size+2) for size in sizes])
+    line = "┴".join(["─" * (size + 2) for size in sizes])
     return f"└{line}┘"
+
 
 def make_ascii_table(headers, records):
 
@@ -26,7 +33,7 @@ def make_ascii_table(headers, records):
 
     for row, record in enumerate(records):
         if len(headers) != len(record):
-            raise ValueError(f'Diffrent size of headers and records (row={row})')
+            raise ValueError(f"Diffrent size of headers and records (row={row})")
         for column, value in enumerate(record):
             svalue = str(value)
             size = len(svalue)

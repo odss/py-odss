@@ -11,6 +11,7 @@ from tests.interfaces import ITextService
 
 pytestmark = pytest.mark.asyncio
 
+
 def test_add_incorrect_bundle_listener(events):
     class Listener:
         pass
@@ -49,7 +50,7 @@ async def test_error_in_listener(events, listener):
     class ErrorListener:
         @Callback
         def bundle_changed(self, event):
-            raise Exception('buu')
+            raise Exception("buu")
 
     events.add_bundle_listener(ErrorListener())
     events.add_bundle_listener(listener)

@@ -18,8 +18,6 @@ class StandardStreamReaderProtocol(asyncio.StreamReaderProtocol):
 
 
 class StandardStreamWriter(asyncio.StreamWriter):
-
-
     def write(self, data):
         if isinstance(data, str):
             data = data.encode()
@@ -51,7 +49,9 @@ async def create_standard_streams(stdin, stdout, stderr, *, loop=None):
 
 
 async def get_standard_streams(*, use_stderr=False, loop=None):
-    in_reader, out_writer, err_writer = await open_standard_pipe_connection(sys.stdin, sys.stdout, sys.stderr, loop=loop)
+    in_reader, out_writer, err_writer = await open_standard_pipe_connection(
+        sys.stdin, sys.stdout, sys.stderr, loop=loop
+    )
     return in_reader, err_writer if use_stderr else out_writer
 
 
@@ -65,7 +65,7 @@ class AStream:
             self.streams = await get_standard_streams(loop=self.loop)
         return self.streams
 
-    async def input(prompt="", *, use_stderr=False, loop=None):
+    async def input(self, prompt="", *, use_stderr=False, loop=None):
         reader, writer = await self.get_streams()
         writer.write(prompt.encode())
         await writer.drain()
@@ -76,7 +76,6 @@ class AStream:
             raise EOFError
 
         return data.rstrip("\n")
-
 
     async def write(self, data):
         print(f"write: {threading.current_thread().name}")

@@ -11,6 +11,7 @@ from odss.core.framework import Framework
 def set_uv_loop() -> None:
     try:
         import uvloop
+
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     except ImportError:
         print("Missing uvloop")
