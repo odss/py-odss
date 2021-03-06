@@ -43,6 +43,9 @@ class ServiceShell(Shell):
         pass
 
     def bundles_list(self, session):
+        """
+        List all installed bundles
+        """
         bundles = self.ctx.get_bundles()
         header = ('ID', 'Name', 'State', 'Version')
         lines = [(
@@ -55,6 +58,9 @@ class ServiceShell(Shell):
         session.write_line(output)
 
     def bundle_details(self, session, bundle_id):
+        """
+        Show bundle details
+        """
         bundle = self.ctx.get_bundle(int(bundle_id))
         if bundle is None:
             session.write_line("Unknown bundle ID: {0}", bundle_id)
@@ -84,6 +90,9 @@ class ServiceShell(Shell):
         session.write_line("\n".join(buff))
 
     def services_list(self, session, spec=None):
+        """
+        List all registred services
+        """
         refs = self.ctx.get_service_references(spec)
         header = ("ID", "Classes", "Bundle", "Ranking")
         lines = [(
@@ -96,6 +105,9 @@ class ServiceShell(Shell):
         session.write_line(output)
 
     def service_details(self, session, service_id):
+        """
+        Show service details
+        """
         ref = self.ctx.get_service_reference(
             None, {SERVICE_ID: int(service_id)}
         )
@@ -120,11 +132,17 @@ class ServiceShell(Shell):
         session.write_line("\n".join(buff))
 
     async def install_bundle(self, session, name):
+        """
+        Install the bundle with the given name.
+        """
         bundle = await self.ctx.install_bundle(name)
         session.write_line("Bundle ID: {0}".format(bundle.id))
         return bundle.id
 
     async def uninstall_bundle(self, session, bundle_id):
+        """
+        Uninstall the bundle with the given ID.
+        """
         bundle = self.ctx.get_bundle(int(bundle_id))
         if bundle is None:
             session.write_line("Unknown bundle ID: {0}", bundle_id)
@@ -133,6 +151,9 @@ class ServiceShell(Shell):
         await bundle.uninstall()
 
     async def start_bundle(self, session, bundle_id):
+        """
+        Start the bundle with the given ID.
+        """
         bundle = self.ctx.get_bundle(int(bundle_id))
         if bundle is None:
             session.write_line("Unknown bundle ID: {0}", bundle_id)
@@ -141,6 +162,9 @@ class ServiceShell(Shell):
         await bundle.start()
 
     async def stop_bundle(self, session, bundle_id):
+        """
+        Stop the bundle with the given ID.
+        """
         bundle = self.ctx.get_bundle(int(bundle_id))
         if bundle is None:
             session.write_line("Unknown bundle ID: {0}", bundle_id)

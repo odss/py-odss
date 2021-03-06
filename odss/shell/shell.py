@@ -2,6 +2,7 @@ import abc
 import asyncio
 import shlex
 import collections
+import inspect
 import logging
 import typing as t
 
@@ -83,12 +84,6 @@ class Shell:
             return True
         return False
 
-    def get_namespaces(self):
-        pass
-
-    def get_commands(self, namespace=DEFAULT_NAMESPACE):
-        pass
-
     async def execute(self, cmdline, session):
         try:
             line_parts = shlex.split(cmdline, True, True)
@@ -133,10 +128,40 @@ class Shell:
             raise ValueError(f"Unknown command: {name}")
         return namespace, name
 
-    def print_help(self, session):
-        pass
+    def print_help(self, session, name=None):
+        """
+        Prints info about all available commands.
+        """
+        if name:
+            if name in self._commands:
+                self._print_namespace_help(session, name)
+            else:
+                namespace, cmdname = self._parse_command_name(name)
+                self._print_command_help(session, namespace, name)
+        else:
+            namespaces = list(self._commands.keys())
+            namespaces.remove(DEFAULT_NAMESPACE)
+            namespaces.sort()
+            namespaces.append(DEFAULT_NAMESPACE)
+            for namespace in namespaces:
+                self._print_namespace_help(session, namespace)
+
+    def _print_command_help(self, session, namespace, name):
+        command = self._commands[namespace][name]
+        args, doc = get_method_info(command)
+        sargs = ", ".join(args[1:])
+        session.write_line(f"- {name:10} {sargs:<15} {doc}")
+
+    def _print_namespace_help(self, session, namespace):
+        session.write_line(f"[{namespace}]")
+        for name in self._commands[namespace].keys():
+            self._print_command_help(session, namespace, name)
 
     def quit(self, session):
+        """
+        Stops the shell session (raise KeyboardInterrupt)
+        """
+        session.write_line("Bye...")
         raise KeyboardInterrupt()
 
 
@@ -157,3 +182,25 @@ def build_params(params):
         else:
             args.append(param)
     return args, kwargs
+
+
+MethodInfo = collections.namedtuple("MethodInfo", "args vargs kwargs doc")
+
+def get_method_info(method):
+    args = []
+    for param in inspect.signature(method).parameters.values():
+        if param.kind == inspect.Parameter.VAR_POSITIONAL:
+            args.append(f"[**{param.name}]")
+        elif param.kind == inspect.Parameter.VAR_KEYWORD:
+            args.append(f"[*{param.name}]")
+        else:
+            arg = f"<{param.name}>"
+            if param.annotation is not param.empty:
+                arg = f"{arg}:{param.annotation}"
+            if param.default is not param.empty:
+                if param.default is not None:
+                    arg = f"{arg}={param.default}"
+                arg = f"[{arg}]"
+            args.append(arg)
+
+    return args, inspect.getdoc(method) or ""
