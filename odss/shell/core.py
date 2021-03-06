@@ -29,6 +29,7 @@ class ServiceShell(Shell):
         super().__init__(ctx)
         self.register_command("bl", self.bundles_list)
         self.register_command("bd", self.bundle_details)
+        self.register_command('sl', self.services_list)
         self.register_command('sd', self.service_details)
         self.register_command('install', self.install_bundle)
         self.register_command('uninstall', self.uninstall_bundle)
@@ -82,6 +83,17 @@ class ServiceShell(Shell):
 
         session.write_line("\n".join(buff))
 
+    def services_list(self, session, spec=None):
+        refs = self.ctx.get_service_references(spec)
+        header = ("ID", "Classes", "Bundle", "Ranking")
+        lines = [(
+                str(ref.get_property(SERVICE_ID)),
+                str(ref.get_property(OBJECTCLASS)),
+                str(ref.get_bundle()),
+                str(ref.get_property(SERVICE_RANKING))
+        ) for ref in refs]
+        output = make_ascii_table(header, lines)
+        session.write_line(output)
 
     def service_details(self, session, service_id):
         ref = self.ctx.get_service_reference(
