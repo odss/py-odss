@@ -1,7 +1,7 @@
 all: test
 
 test: .develop
-	@py.test -q ./tests
+	@py.test -s -q ./tests
 
 isort:
 	isort -rc odss
