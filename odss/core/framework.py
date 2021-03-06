@@ -1,23 +1,22 @@
 import asyncio
 import logging
-import sys
 import signal
+import sys
+import async_timeout
 
-from .consts import ACTIVATOR_CLASS
-
-from .loader import load_bundle, unload_bundle
 from .bundle import Bundle, BundleContext
+from .consts import ACTIVATOR_CLASS, BLOCK_TIMEOUT
 from .errors import BundleException
 from .events import BundleEvent, EventDispatcher, FrameworkEvent, ServiceEvent
-from .registry import ServiceRegistry
+from .loader import load_bundle, unload_bundle
 from .loop import TaskRunner
-
+from .registry import ServiceRegistry
 
 logger = logging.getLogger(__name__)
 
 
 class Framework(Bundle):
-    def __init__(self, properties, loop=None):
+    def __init__(self, properties):
         super().__init__(self, 0, "atto.framework", sys.modules[__name__])
         self.loop: asyncio.events.AbstractEventLoop = asyncio.get_event_loop()
         self.__properties = properties
@@ -25,7 +24,7 @@ class Framework(Bundle):
         self.__bundles_map = {}
         self.__next_id = 1
         self.__runner = TaskRunner(self.loop)
-        self.__registry = ServiceRegistry(self)
+        self.__registry = ServiceRegistry(self.unregister_service)
         self.__events = EventDispatcher(self.__runner)
 
         self.__activators = {}
@@ -35,6 +34,9 @@ class Framework(Bundle):
 
     def create_task(self, target, *args):
         return self.__runner.create_task(target, *args)
+
+    def create_job(self, target, *args):
+        return self.__runner.create_job(target, *args)
 
     def get_bundles(self):
         return self.__bundles[:]
@@ -71,6 +73,12 @@ class Framework(Bundle):
     def find_service_reference(self, clazz=None, query=None):
         return self.__registry.find_service_reference(clazz, query)
 
+    def get_bundle_references(self, bundle):
+        return self.__registry.get_bundle_references(bundle)
+
+    def get_bundle_using_services(self, bundle):
+        return self.__registry.get_bundle_using_services(bundle)
+
     async def register_service(self, bundle, clazz, service, properties=None):
         if bundle is None:
             raise BundleException("Invalid registration parameter: bundle")
@@ -104,7 +112,7 @@ class Framework(Bundle):
                 logger.debug('Already installed bundle: "%s"', name)
                 return
 
-        module_ = await self.create_task(load_bundle, name, path)
+        module_ = await self.create_job(load_bundle, name, path)
 
         bundle_id = self.__next_id
         bundle = Bundle(self, bundle_id, name, module_)
@@ -125,7 +133,7 @@ class Framework(Bundle):
             self.__bundles.remove(bundle)
             if bundle.id in self.__activators:
                 del self.__activators[bundle.id]
-            unload_bundle(bundle.name)
+            await self.create_job(unload_bundle, bundle.name)
 
     async def start(self, attach_signals=False):
         logger.info("Start odss.framework")
@@ -143,6 +151,7 @@ class Framework(Bundle):
                 logger.exception(
                     'Error raised while bundle starting: "%s"', bundle.name
                 )
+
         self._set_state(Bundle.ACTIVE)
         await self.__fire_framework_event(BundleEvent.STARTED)
 
@@ -193,17 +202,12 @@ class Framework(Bundle):
         try:
             start_method = self.__get_activator_method(bundle, "start")
             if start_method:
-                await self.create_task(start_method, context)
-                # if asyncio.iscoroutinefunction(start_method):
-                #     await self.loop.create_task(start_method(context))
-                # else:
-                #     await self.loop.run_in_executor(None, start_method, context)
-        except BundleException as ex:
+                with async_timeout.timeout(BLOCK_TIMEOUT):
+                    await self.create_task(start_method, context)
+        except Exception as ex:
             bundle._set_state(previous_state)
-            logger.warning("Problem with start bundle: {0}".format(ex))
-        except Exception:
-            bundle._set_state(previous_state)
-            raise
+            logger.warning("Problem with start bundle: {0} - {1}".format(bundle, ex))
+            raise ex
 
         bundle._set_state(Bundle.ACTIVE)
         await self.__fire_bundle_event(BundleEvent.STARTED, bundle)
@@ -221,19 +225,12 @@ class Framework(Bundle):
         try:
             stop_method = self.__get_activator_method(bundle, "stop")
             if stop_method:
-                context = bundle.get_context()
-                await self.create_task(stop_method, context)
-
-                # if asyncio.iscoroutinefunction(stop_method):
-                #     await self.loop.create_task(stop_method(context))
-                # else:
-                #     await self.loop.run_in_executor(None, stop_method, context)
-        except BundleException:
-            bundle._set_state(previous_state)
-            raise
+                with async_timeout.timeout(BLOCK_TIMEOUT):
+                    await self.create_task(stop_method, bundle.get_context())
         except Exception as ex:
             bundle._set_state(previous_state)
-            raise BundleException(str(ex))
+            logger.warning("Problem with start bundle: {0} - {1}".format(bundle, ex))
+            raise ex
 
         for reference in self.__registry.get_bundle_references(bundle):
             await self.__unregister_service(reference)

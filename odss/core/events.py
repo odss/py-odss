@@ -1,11 +1,9 @@
-import asyncio
 import logging
 
 from .consts import OBJECTCLASS
 from .errors import BundleException
 from .query import create_query
 from .utils import class_name
-
 
 logger = logging.getLogger(__name__)
 
@@ -140,11 +138,9 @@ class Listeners:
             return False
 
     async def fire_event(self, event):
-        loop = asyncio.get_event_loop()
-        listeners = self.listeners[:]
         tasks = [
             (getattr(listener, self.listener_method), event)
-            for listener in listeners
+            for listener in self.listeners[:]
         ]
         await self.runner.collect_tasks(tasks)
 
@@ -213,9 +209,7 @@ class ServiceListeners:
                 previous = event.previous_properties
                 if query.match(previous):
                     event = ServiceEvent(
-                        ServiceEvent.MODIFIED_ENDMATCH,
-                        event.reference,
-                        previous
+                        ServiceEvent.MODIFIED_ENDMATCH, event.reference, previous
                     )
                     tasks.append((method, event))
         await self.runner.collect_tasks(tasks)

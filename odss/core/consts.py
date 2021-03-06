@@ -5,3 +5,6 @@ SERVICE_RANKING = "__service-priority__"
 FRAMEWORK_UUID = "__framework-uuid__"
 
 ACTIVATOR_CLASS = "Activator"
+
+
+BLOCK_TIMEOUT = 1.0

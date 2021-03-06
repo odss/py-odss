@@ -1,6 +1,6 @@
 import pytest
 
-from odss.core import create_framework
+from odss.core import create_framework, Callback
 from odss.core.errors import BundleException
 from odss.core.events import BundleEvent, FrameworkEvent, ServiceEvent
 from odss.core.registry import ServiceReference
@@ -47,6 +47,7 @@ def test_incorrect_framework_listener(events):
 
 async def test_error_in_listener(events, listener):
     class ErrorListener:
+        @Callback
         def bundle_changed(self, event):
             raise Exception('buu')
 

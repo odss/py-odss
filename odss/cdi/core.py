@@ -1,19 +1,19 @@
-import sys
 import inspect
+import sys
 
 from odss.core.bundle import Bundle, BundleContext
 from odss.core.events import BundleEvent
 from odss.core.trackers import ServiceTracker
 
+from .component import ComponentManager
 from .consts import PROP_HANDLER_NAME
-from .interfaces import IHandlerFactory
 from .contexts import (
-    is_component_factory,
-    get_factory_context,
     ComponentContext,
     FactoryContext,
+    get_factory_context,
+    is_component_factory,
 )
-from .component import ComponentManager
+from .interfaces import IHandlerFactory
 
 CORE_HANDLERS = (
     "odss.cdi.handlers.bind",

@@ -24,7 +24,7 @@ install:
 	@touch .develop
 
 .flake: .install-deps 	$(shell find odss -type f) \
-        				$(shell find tests -type f) 
+        				$(shell find tests -type f)
 	@flake8 odss tests
 	@touch .flake
 

@@ -4,16 +4,15 @@ import typing as t
 from odss.core.utils import classes_name
 
 from .consts import (
+    CALLBACK_BIND,
+    CALLBACK_INVALIDATE,
+    CALLBACK_UNBIND,
+    CALLBACK_VALIDATE,
     HANDLER_PROVIDES,
     HANDLER_REQUIRES,
     METHOD_CALLBACK,
-    CALLBACK_VALIDATE,
-    CALLBACK_INVALIDATE,
-    CALLBACK_BIND,
-    CALLBACK_UNBIND,
 )
 from .contexts import get_factory_context, prepare_factory_context
-
 
 TClass = t.TypeVar("TClass")
 

@@ -105,6 +105,14 @@ class Bundle(IBundle):
     def name(self):
         return self.__name
 
+    @property
+    def version(self):
+        return '0.0.0'
+
+    @property
+    def location(self):
+        return getattr(self.__module, "__file__", "")
+
     def get_module(self):
         return self.__module
 
@@ -113,6 +121,9 @@ class Bundle(IBundle):
 
     async def stop(self):
         await self.__framework.stop_bundle(self)
+
+    async def uninstall(self):
+        await self.__framework.uninstall_bundle(self)
 
     def set_context(self, context):
         self.__context = context
@@ -132,6 +143,11 @@ class Bundle(IBundle):
     def _set_state(self, state):
         self.__state = state
 
+    def get_references(self):
+        return self.__framework.get_bundle_references(self)
+
+    def get_using_services(self):
+        return self.__framework.get_bundle_using_services(self)
 
 class BundleContext:
     def __init__(self, framework, bundle, events):
@@ -157,11 +173,17 @@ class BundleContext:
     def unget_service(self, reference):
         return self.__framework.unget_service(self.__bundle, reference)
 
-    def get_service_reference(self, clazz, filter=None):
+    def get_service_reference(self, clazz=None, filter=None):
         return self.__framework.find_service_reference(clazz, filter)
 
-    def get_service_references(self, clazz, filter=None):
+    def get_service_references(self, clazz=None, filter=None):
         return self.__framework.find_service_references(clazz, filter)
+
+    def get_bundle_references(self, bundle):
+        return self.__framework.get_bundle_references(bundle)
+
+    def get_bundle_imported_services(self, bundle):
+        return self.__framework.get_bundle_imported_services(bundle)
 
     async def install_bundle(self, name, path=None):
         return await self.__framework.install_bundle(name, path)

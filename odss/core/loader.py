@@ -1,10 +1,9 @@
 import importlib
 import sys
-import threading
 
 
 def load_bundle(name: str, path: str = None):
-    print("load_bundle", name, path)
+    # print("load_bundle", name, path)
     return load_package(name, path)
 
 
@@ -16,7 +15,7 @@ def unload_bundle(name):
 
 
 def load_package(name: str, path=None):
-    print("load_package", name, path, threading.current_thread().name)
+    # print("load_package", name, path, threading.current_thread().name)
     try:
         if path:
             sys.path.insert(0, path)

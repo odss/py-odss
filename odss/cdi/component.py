@@ -4,10 +4,9 @@ import typing as t
 
 from odss.core.bundle import BundleContext
 
-from .consts import CALLBACK_VALIDATE, CALLBACK_INVALIDATE
+from .consts import CALLBACK_INVALIDATE, CALLBACK_VALIDATE
 from .contexts import ComponentContext
-from .interfaces import IHandler, IComponentManager
-
+from .interfaces import IComponentManager, IHandler
 
 logger = logging.getLogger(__name__)
 

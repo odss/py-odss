@@ -7,7 +7,7 @@ class Activator:
     def __init__(self):
         self._raise = False
 
-    def start(self, context):
+    async def start(self, context):
         assert isinstance(context, BundleContext)
         self.context = context
 
@@ -16,7 +16,7 @@ class Activator:
             throw_error = False
             raise Exception(":(")
 
-    def stop(self, context):
+    async def stop(self, context):
         assert isinstance(context, BundleContext)
 
         global throw_error

@@ -1,19 +1,19 @@
 import bisect
 
 from .consts import OBJECTCLASS, SERVICE_BUNDLE_ID, SERVICE_ID, SERVICE_RANKING
-
 from .errors import BundleException
 from .query import create_query
 from .utils import class_name, classes_name
 
 
 class ServiceRegistry:
-    def __init__(self, framework):
-        self._framework = framework
+    def __init__(self, unregister_service):
         self._next_service_id = 1
         self._services = {}
         self._services_classes = {}
-        self._services_bundles = {}
+        self._bundle_services = {}
+        self._bundle_unsing = {}
+        self._unregister_service = unregister_service
 
     def register(self, bundle, clazz, service, properties):
         service_id = self._next_service_id
@@ -32,8 +32,8 @@ class ServiceRegistry:
         for spec in classes:
             refs = self._services_classes.setdefault(spec, [])
             bisect.insort_left(refs, ref)
-        self._services_bundles.setdefault(bundle, []).append(ref)
-        return ServiceRegistration(self._framework, ref)
+        self._bundle_services.setdefault(bundle, []).append(ref)
+        return ServiceRegistration(self._unregister_service, ref)
 
     def unregister(self, reference):
         if reference not in self._services:
@@ -47,13 +47,13 @@ class ServiceRegistry:
             if not spec_services:
                 del self._services_classes[spec]
         bundle = reference.get_bundle()
-        if bundle in self._services_bundles:
-            self._services_bundles[bundle].remove(reference)
+        if bundle in self._bundle_services:
+            self._bundle_services[bundle].remove(reference)
         return service
 
     def find_service_references(self, clazz=None, query=None, only_first=False):
         refs = []
-        if clazz is None and query is None:
+        if clazz is None:
             refs = sorted(self._services.keys())
         elif clazz is not None:
             name = class_name(clazz)
@@ -67,8 +67,6 @@ class ServiceRegistry:
         return refs
 
     def find_service_reference(self, clazz, query=None):
-        if clazz is None:
-            raise BundleException("Expected class interface")
         return self.find_service_references(clazz, query, True)
 
     def get_service(self, bundle, reference):
@@ -76,6 +74,9 @@ class ServiceRegistry:
             raise BundleException("Expected ServiceReference object")
 
         try:
+            using = self._bundle_unsing.setdefault(bundle, {})
+            using.setdefault(reference, _Counter()).inc()
+
             service = self._services[reference]
             reference.used_by(bundle)
             return service
@@ -88,15 +89,22 @@ class ServiceRegistry:
         if not isinstance(reference, ServiceReference):
             raise BundleException("Expected ServiceReference object")
         try:
-            service = self._services[reference]
             reference.unused_by(bundle)
-            return service
+            using = self._bundle_unsing[bundle]
+            using[reference].dec()
+            if not using[reference].is_used():
+                del using[reference]
+                if not using:
+                    del self._bundle_unsing[bundle]
         except KeyError:
             pass
 
-    def get_bundle_references(self, bundle):
-        return self._services_bundles.get(bundle, [])
 
+    def get_bundle_references(self, bundle):
+        return self._bundle_services.get(bundle, [])
+
+    def get_bundle_using_services(self, bundle):
+        return list(self._bundle_unsing.get(bundle, {}).keys())
 
 class ServiceReference:
     def __init__(self, bundle, properties):
@@ -127,6 +135,9 @@ class ServiceReference:
         if bundle is None or bundle is self._bundle:
             return
         self._using_bundles.setdefault(bundle, _Counter()).inc()
+
+    def get_using_bundles(self):
+        return list(self._using_bundles.keys())
 
     def _compute_sort_key(self):
         return (-int(self._properties.get(SERVICE_RANKING, 0)), self._service_id)
@@ -159,15 +170,15 @@ class ServiceReference:
 
 
 class ServiceRegistration:
-    def __init__(self, framework, reference):
-        self._framework = framework
-        self._reference = reference
+    def __init__(self, unregister, reference):
+        self.__unregister = unregister
+        self.__reference = reference
 
     async def unregister(self):
-        await self._framework.unregister_service(self)
+        await self.__unregister(self)
 
     def get_reference(self):
-        return self._reference
+        return self.__reference
 
 
 class _Counter:

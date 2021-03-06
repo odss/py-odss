@@ -23,12 +23,12 @@ class Activator:
         self.drunk_service = DrunkEchoServcie()
         self.normal_service = NormalEchoServcie()
 
-        props = {"name": "normal"}
+        props = {"name": "normal", "type": "text"}
         self.reg_normal = await context.register_service(
             ITextService, self.normal_service, props
         )
 
-        props = {"name": "drunk"}
+        props = {"name": "drunk", "type": "text"}
         self.reg_drunk = await context.register_service(
             ITextService, self.drunk_service, props
         )

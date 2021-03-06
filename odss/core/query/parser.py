@@ -2,13 +2,22 @@ import re
 
 from . import nodes
 
+
 # flake8: noqa: C901
 def parse_query(query):
-    query = query.trim()
+    query = query.strip()
     size = len(query)
+    if not query:
+        raise ValueError('Incorect query: "{}"'.format(query))
+
+    if query[0] != '(' and query[-1] != ')':
+        query = "({})".format(query)
+        size = len(query)
+
     stack = []
     pos = 0
     is_escaped = False
+    sf = None
     while pos < size:
         if is_escaped:
             is_escaped = False
@@ -27,7 +36,7 @@ def parse_query(query):
                 stack.append(pos + 1)
         elif char == ")":
             top = stack.pop() if stack else None
-            head = stack[-1]
+            head = stack[-1] if stack else None
             if isinstance(top, nodes.Node):
                 if isinstance(head, nodes.Node):
                     head.value.append(top)
@@ -45,9 +54,10 @@ def parse_query(query):
         return sf
     raise ValueError('Incorect query: "{}"'.format(query))
 
+
 # flake8: noqa: C901
 def subquery(query, start, end):
-    sub = query[start, end + 1]
+    sub = query[start:end + 1]
 
     def check_equal(pos):
         if query[pos] != "=":
@@ -59,7 +69,7 @@ def subquery(query, start, end):
     if not sub:
         raise ValueError("Empty query")
 
-    for sign in list("~$^<>=*"):
+    for sign in "~$^<>=*":
         if sign in query:
             break
     else:
@@ -74,7 +84,7 @@ def subquery(query, start, end):
     if start == end_name:
         raise ValueError('Not found query name: "{}"'.format(sub))
 
-    name = query[start, end_name]
+    name = query[start:end_name]
     start = end_name
     char = query[start]
     is_equal = False
@@ -100,7 +110,7 @@ def subquery(query, start, end):
     if start > end:
         raise ValueError("Not found query value")
 
-    value = query[start, end + 1]
+    value = query[start:end + 1]
     if is_equal:
         if value == "*":
             NodeClass = nodes.PresentNode

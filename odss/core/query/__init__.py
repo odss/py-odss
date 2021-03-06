@@ -1,5 +1,4 @@
-from . import nodes
-from . import parser
+from . import nodes, parser
 
 
 def create_query(query):

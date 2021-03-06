@@ -2,7 +2,6 @@ import collections
 
 from .events import ServiceEvent
 
-
 __all__ = ["ServiceTracker"]
 
 

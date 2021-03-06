@@ -1,6 +1,6 @@
-import inspect
-import copy
 import collections
+import copy
+import inspect
 import typing as t
 
 from odss.core.bundle import Bundle, BundleContext

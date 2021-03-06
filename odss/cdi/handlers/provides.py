@@ -1,10 +1,11 @@
 import typing as t
 
 from odss.core.bundle import BundleContext
-from ..consts import PROP_HANDLER_NAME, HANDLER_PROVIDES
-from ..interfaces import IHandler, IHandlerFactory
-from ..contexts import FactoryContext
+
 from ..component import ComponentManager
+from ..consts import HANDLER_PROVIDES, PROP_HANDLER_NAME
+from ..contexts import FactoryContext
+from ..interfaces import IHandler, IHandlerFactory
 
 
 class Activator:

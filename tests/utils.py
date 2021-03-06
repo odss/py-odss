@@ -1,3 +1,5 @@
+from odss.core import Callback
+
 TEXT_BUNDLE = "tests.bundles.text"
 SIMPLE_BUNDLE = "tests.bundles.simple"
 TRANSLATE_BUNDLE = "tests.bundles.translate"
@@ -17,19 +19,19 @@ class Listener:
 
 
 class ServiceListener(Listener):
-    def service_changed(self, event):
+    async def service_changed(self, event):
         self.events.append(event)
         self.names.append("service_changed")
 
 
 class FrameworkListener(Listener):
-    def framework_changed(self, event):
+    async def framework_changed(self, event):
         self.events.append(event)
         self.names.append("framework_changed")
 
 
 class BundleListener(Listener):
-    def bundle_changed(self, event):
+    async def bundle_changed(self, event):
         self.events.append(event)
         self.names.append("bundle_changed")
 
