@@ -159,6 +159,9 @@ class BundleContext:
     def __str__(self):
         return "BundleContext({0})".format(self.__bundle)
 
+    def get_framework(self):
+        return self.__framework
+
     def get_bundle(self, bundle_id=None) -> Bundle:
         return self.__framework.get_bundle_by_id(bundle_id)
 

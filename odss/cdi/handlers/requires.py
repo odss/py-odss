@@ -64,7 +64,7 @@ class SpecificationsTracker(ServiceTracker):
     def __init__(
         self, context: BundleContext, handler: RequiresHandlerService, specifiction: str
     ):
-        super().__init__(context, specifiction)
+        super().__init__(self, context, specifiction)
         self.handler = handler
         self.ref = None
         self.service = None

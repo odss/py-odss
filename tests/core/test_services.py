@@ -2,7 +2,7 @@ import pytest
 
 from odss.core.bundle import BundleContext
 from odss.core.errors import BundleException
-from tests.interfaces import ITextService
+from tests.core.interfaces import ITextService
 from tests.utils import TEXT_BUNDLE, TRANSLATE_BUNDLE
 
 

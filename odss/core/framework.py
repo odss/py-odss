@@ -56,6 +56,9 @@ class Framework(Bundle):
                 return bundle
         raise BundleException("Not found bundle name={}".format(name))
 
+    def get_properties(self):
+        return self.__properties.copy()
+
     def get_property(self, name):
         if name in self.__properties:
             return self.__properties[name]
@@ -106,7 +109,7 @@ class Framework(Bundle):
         await self.__events.services.fire_event(event)
 
     async def install_bundle(self, name, path=None):
-        logger.info('Install bungle: "{}" ({})'.format(name, path))
+        logger.info('Install bundle: "{}" (path={})'.format(name, path))
         for bundle in self.__bundles:
             if bundle.name == name:
                 logger.debug('Already installed bundle: "%s"', name)
@@ -162,7 +165,7 @@ class Framework(Bundle):
             await self._stopped.wait()
 
     async def stop(self):
-        print("Stop odss.framework")
+        logger.info("Stop odss.framework")
 
         if self.state != Bundle.ACTIVE:
             logger.debug("Framewok not started")
@@ -202,8 +205,10 @@ class Framework(Bundle):
         try:
             start_method = self.__get_activator_method(bundle, "start")
             if start_method:
-                with async_timeout.timeout(BLOCK_TIMEOUT):
-                    await self.create_task(start_method, context)
+                target = start_method(context)
+                if asyncio.iscoroutine(target):
+                    with async_timeout.timeout(BLOCK_TIMEOUT):
+                        await target
         except Exception as ex:
             bundle._set_state(previous_state)
             logger.warning("Problem with start bundle: {0} - {1}".format(bundle, ex))
@@ -225,11 +230,13 @@ class Framework(Bundle):
         try:
             stop_method = self.__get_activator_method(bundle, "stop")
             if stop_method:
-                with async_timeout.timeout(BLOCK_TIMEOUT):
-                    await self.create_task(stop_method, bundle.get_context())
+                target = stop_method(bundle.get_context())
+                if asyncio.iscoroutine(target):
+                    # with async_timeout.timeout(BLOCK_TIMEOUT):
+                    await target
         except Exception as ex:
             bundle._set_state(previous_state)
-            logger.warning("Problem with start bundle: {0} - {1}".format(bundle, ex))
+            logger.warning("Problem with stop bundle: {0} - {1}".format(bundle, ex))
             raise ex
 
         for reference in self.__registry.get_bundle_references(bundle):

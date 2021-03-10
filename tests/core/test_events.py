@@ -7,7 +7,7 @@ from odss.core.registry import ServiceReference
 from odss.core.consts import OBJECTCLASS, SERVICE_ID
 
 from tests.utils import SIMPLE_BUNDLE, TRANSLATE_BUNDLE
-from tests.interfaces import ITextService
+from tests.core.interfaces import ITextService
 
 pytestmark = pytest.mark.asyncio
 

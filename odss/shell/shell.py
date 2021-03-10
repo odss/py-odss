@@ -1,61 +1,133 @@
-import abc
 import asyncio
+import io
+import sys
 import shlex
 import collections
 import inspect
 import logging
 import typing as t
+import traceback
 
+from .session import Session
+from .decorators import command
+from .consts import ODSS_SHELL_COMMAND_HANDLER, DEFAULT_NAMESPACE
 
 logger = logging.getLogger(__name__)
 
 
-DEFAULT_NAMESPACE = "default"
+HandlerInfo = t.Tuple[str, t.Callable, t.Dict[str, t.Any]]
 
 
-class CommandContext:
-    pass
-
-
-class CompleteEvent:
-    pass
-
-
-class Completion:
-    pass
-
-
-class ICommand(metaclass=abc.ABCMeta):
-    @abc.abstractmethod
-    async def execute(self, context: CommandContext) -> None:
-        pass
-
-    async def completions(
-        self, event: CompleteEvent
-    ) -> t.AsyncGenerator[Completion, None]:
-        while False:
-            yield
+def _extract_command_handlers(obj: t.Any) -> HandlerInfo:
+    method = inspect.getmembers(obj, inspect.isroutine)
+    for _, fn in method:
+        attrs = getattr(fn, ODSS_SHELL_COMMAND_HANDLER, None)
+        if attrs:
+            yield fn, attrs
 
 
 class Shell:
-    def __init__(self, ctx=None):
+    def __init__(self, ctx, bind_basic=False):
         self.ctx = ctx
         self._commands = collections.defaultdict(dict)
+        self._handlers = collections.defaultdict(list)
 
-        self.register_command("help", self.print_help)
-        self.register_command("?", self.print_help)
-        self.register_command("quit", self.quit)
-        self.register_command("exit", self.quit)
+        if bind_basic:
+            self.bind_handler(self)
+
+    @command("help", alias="?")
+    def print_help(self, session: Session, name: str = None) -> None:
+        """
+        Prints info about all available commands.
+        """
+        if name:
+            if name in self._commands:
+                self._print_namespace_help(session, name)
+            else:
+                namespace, cmdname = self._parse_command_name(name)
+                self._print_command_help(session, namespace, name)
+        else:
+            namespaces = list(self._commands.keys())
+            namespaces.remove(DEFAULT_NAMESPACE)
+            namespaces.sort()
+            namespaces.append(DEFAULT_NAMESPACE)
+            for namespace in namespaces:
+                self._print_namespace_help(session, namespace)
+
+    def _print_command_help(self, session: Session, namespace: str, name: str):
+        command = self._commands[namespace][name]
+        args, doc = get_command_info(command)
+        sargs = ", ".join(args[1:])
+        session.write_line(f"- {name:10} {sargs:<15} {doc}")
+
+    def _print_namespace_help(self, session, namespace):
+        session.write_line(f"[{namespace}]")
+        for name in sorted(self._commands[namespace].keys()):
+            self._print_command_help(session, namespace, name)
+
+    @command(alias="exit")
+    async def quit(self, session: Session):
+        """
+        Stops the shell session
+        """
+
+        def shutdown():
+            framework = self.ctx.get_framework()
+            framework.create_task(framework.stop)
+
+        session.write_line("Bye...")
+        asyncio.get_event_loop().call_soon(shutdown)
+
+    def bind_handler(self, handler: t.Any):
+        """
+        Bind handler
+        """
+        if handler in self._handlers:
+            logger.warning("Handler already register: %s", handler)
+            return False
+
+        commands = []
+        for method, attrs in _extract_command_handlers(handler):
+            name = attrs["name"]
+            namespace = attrs.get("namespace") or DEFAULT_NAMESPACE
+            alias = attrs.get("alias", [])
+
+            self.register_command(name, method, namespace)
+            commands.append((name, namespace))
+
+            if not isinstance(alias, (tuple, list)):
+                alias = [alias]
+            for name in alias:
+                self.register_command(name, method, namespace)
+                commands.append((name, namespace))
+
+        self._handlers[handler] = commands
+        return True
+
+    def unbind_handler(self, handler: t.Any):
+        if handler not in self._handlers:
+            logger.warning("Handler not found: %s", handler)
+            return False
+
+        for name, namespace in self._handlers[handler]:
+            self.unregister_command(name, namespace)
+
+        del self._handlers[handler]
+
+        return True
 
     def register_command(
-        self, name: str, handler: t.Any, namespace: str = DEFAULT_NAMESPACE
+        self, name: str, handler: t.Callable, namespace: str = DEFAULT_NAMESPACE
     ) -> bool:
         name = (name or "").strip().lower()
-        namespace = (namespace or "").strip().lower()
+        namespace = namespace.strip().lower()
 
         assert name, "No command name"
         assert namespace, "No command namespace"
         assert handler, f"No command handler for {namespace}.{name}"
+        assert callable(
+            handler
+        ), f"Expected callable command handler for {namespace}.{name}"
 
         space = self._commands[namespace]
         if name in space:
@@ -65,7 +137,7 @@ class Shell:
         space[name] = handler
         return True
 
-    def unregister_command(self, name, namespace=DEFAULT_NAMESPACE) -> bool:
+    def unregister_command(self, name: str, namespace: str = DEFAULT_NAMESPACE) -> bool:
         name = (name or "").strip().lower()
         namespace = (namespace or "").strip().lower()
 
@@ -90,7 +162,35 @@ class Shell:
             return True
         return False
 
-    async def execute(self, cmdline, session):
+    def get_namespaces(self):
+        namespaces = list(self._commands.keys())
+        try:
+            namespaces.remove(DEFAULT_NAMESPACE)
+        except ValueError:
+            pass
+        namespaces.sort()
+        return namespaces
+
+    def get_commands(self, namespace: str = DEFAULT_NAMESPACE):
+        try:
+            namespace.strip().lower()
+            commands = list(self._commands[namespace].keys())
+            commands.sort()
+            return commands
+        except KeyError:
+            return []
+
+    def get_all_commands(self):
+        commands = []
+        for namespace, handlers in self._commands.items():
+            for name in handlers.keys():
+                if namespace == DEFAULT_NAMESPACE:
+                    commands.append(name)
+                else:
+                    commands.append(f"{namespace}.{name}")
+        return sorted(commands)
+
+    async def execute(self, session: Session, cmdline: str):
         try:
             line_parts = shlex.split(cmdline, True, True)
         except ValueError as ex:
@@ -102,27 +202,28 @@ class Shell:
 
         args, kwargs = build_params(line_parts[1:])
 
-        error_msg = ""
         try:
             namespace, name = self._parse_command_name(line_parts[0])
             command_handler = self._commands[namespace][name]
             result = command_handler(session, *args, **kwargs)
+
             if asyncio.iscoroutine(result):
-                await result
+                result = await result
+            if result:
+                if not isinstance(result, str):
+                    result = "\n".join(list(result))
+                session.write_line(result)
 
             return True
-        except ValueError as ex:
-            error_msg = str(ex)
-        except TypeError as ex:
-            error_msg = f"Command call problem: {ex}"
-        except Exception as ex:
-            error_msg = "{0} - {1}".format(type(ex).__name__, str(ex))
-        finally:
-            if error_msg:
-                session.write_line(error_msg)
+        except Exception:
+            # error_msg = "{0} - {1}".format(type(ex).__name__, str(ex))
+            # session.write_line(error_msg)
+            trace = format_exception(sys.exc_info())
+            session.write_line(trace)
+
         return False
 
-    def _parse_command_name(self, name):
+    def _parse_command_name(self, name: str):
         namespace, cmdname = split_command_name(name)
         if namespace not in self._commands:
             raise ValueError(f"Unknown command: {name}")
@@ -133,41 +234,16 @@ class Shell:
             raise ValueError(f"Unknown command: {name}")
         return namespace, name
 
-    def print_help(self, session, name=None):
-        """
-        Prints info about all available commands.
-        """
-        if name:
-            if name in self._commands:
-                self._print_namespace_help(session, name)
-            else:
-                namespace, cmdname = self._parse_command_name(name)
-                self._print_command_help(session, namespace, name)
-        else:
-            namespaces = list(self._commands.keys())
-            namespaces.remove(DEFAULT_NAMESPACE)
-            namespaces.sort()
-            namespaces.append(DEFAULT_NAMESPACE)
-            for namespace in namespaces:
-                self._print_namespace_help(session, namespace)
 
-    def _print_command_help(self, session, namespace, name):
-        command = self._commands[namespace][name]
-        args, doc = get_method_info(command)
-        sargs = ", ".join(args[1:])
-        session.write_line(f"- {name:10} {sargs:<15} {doc}")
-
-    def _print_namespace_help(self, session, namespace):
-        session.write_line(f"[{namespace}]")
-        for name in self._commands[namespace].keys():
-            self._print_command_help(session, namespace, name)
-
-    def quit(self, session):
-        """
-        Stops the shell session (raise KeyboardInterrupt)
-        """
-        session.write_line("Bye...")
-        raise KeyboardInterrupt()
+def format_exception(exc_info):
+    sio = io.StringIO()
+    type, value, tb = exc_info
+    traceback.print_exception(type, value, tb, None, sio)
+    s = sio.getvalue()
+    sio.close()
+    if s[-1:] == "\n":
+        s = s[:-1]
+    return s
 
 
 def split_command_name(
@@ -191,24 +267,22 @@ def build_params(params):
     return args, kwargs
 
 
-MethodInfo = collections.namedtuple("MethodInfo", "args vargs kwargs doc")
+CommandInfo = t.Tuple[t.List[str], str]
 
 
-def get_method_info(method):
+def get_command_info(command: t.Any) -> CommandInfo:
     args = []
-    for param in inspect.signature(method).parameters.values():
+    for param in inspect.signature(command).parameters.values():
         if param.kind == inspect.Parameter.VAR_POSITIONAL:
             args.append(f"[**{param.name}]")
         elif param.kind == inspect.Parameter.VAR_KEYWORD:
             args.append(f"[*{param.name}]")
         else:
             arg = f"<{param.name}>"
-            if param.annotation is not param.empty:
-                arg = f"{arg}:{param.annotation}"
             if param.default is not param.empty:
                 if param.default is not None:
                     arg = f"{arg}={param.default}"
                 arg = f"[{arg}]"
             args.append(arg)
 
-    return args, inspect.getdoc(method) or ""
+    return args, inspect.getdoc(command) or ""

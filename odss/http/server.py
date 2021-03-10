@@ -1,5 +1,4 @@
 import logging
-import threading
 
 from aiohttp import web
 
@@ -12,13 +11,12 @@ class Activator:
         self.server_port = 8765
 
     async def start(self, ctx):
-        print(threading.current_thread().name)
         host = ctx.get_property("http.server.host")
         port = ctx.get_property("http.server.port")
         await self.start_server(host, port)
 
     async def stop(self, ctx):
-        print("Stop HTTP")
+        logger.info("Stop HTTP")
         await self.site.stop()
         await self.runner.cleanup()
 
@@ -32,7 +30,7 @@ class Activator:
         self.site = web.TCPSite(self.runner, host, port, ssl_context=context)
 
         try:
-            print(f"Start http server http://{host}:{port}")
+            logger.info("Start http server http://%s:%d", host, port)
             await self.site.start()
         except OSError as error:
             logger.error("Failed to create HTTP server at port %d: %s", port, error)

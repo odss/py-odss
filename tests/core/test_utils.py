@@ -2,9 +2,9 @@ import pytest
 
 from odss.core.errors import BundleException
 from odss.core.utils import class_name, classes_name
-from tests.interfaces import ITextService
+from tests.core.interfaces import ITextService
 
-IECHO_NAME = "tests.interfaces.ITextService"
+IECHO_NAME = "tests.core.interfaces.ITextService"
 
 
 def test_class_name():

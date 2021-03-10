@@ -6,7 +6,8 @@ from odss.shell.session import Session
 
 class TestSession(Session):
     def __init__(self):
-        super().__init__()
+        super().__init__({})
+        self.stack = []
         self.output = ""
         self.buff = []
 
@@ -14,8 +15,16 @@ class TestSession(Session):
         self.buff.append(data)
 
     def flush(self):
-        self.output = "".join(self.buff)
+        self.output += "".join(self.buff)
         self.buff = []
+
+    def __enter__(self):
+        self.stack.append((self.output, self.buff))
+        self.output = ""
+        self.buff = []
+
+    def __exit__(self, _, __, ___):
+        self.output, self.buff = self.stack.pop()
 
 
 @pytest.fixture()

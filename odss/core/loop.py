@@ -33,7 +33,6 @@ class TaskRunner:
             return self.loop.create_task(target(*args))
         elif is_callback(target):
             return self.run_in_future(target, *args)
-        print(target)
         raise TypeError(
             "Incorrect type of target. Excpected coroutine or coroutinefunction"
         )

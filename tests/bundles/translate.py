@@ -1,5 +1,5 @@
 from odss.core.bundle import BundleContext
-from tests.interfaces import ITranslateService
+from tests.core.interfaces import ITranslateService
 
 
 TRANSLATE = {"hello": "cześć", "world": "świat"}

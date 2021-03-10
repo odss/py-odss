@@ -1,3 +1,6 @@
+import abc
+import logging
+import asyncio
 import collections
 
 from .events import ServiceEvent
@@ -5,43 +8,43 @@ from .events import ServiceEvent
 __all__ = ["ServiceTracker"]
 
 
-class ServiceTracker:
-    def __init__(self, context, interface=None, query=None, customizer=None):
-        self.context = context
-        self._interface = interface
-        self._query = query
-        customizer = customizer if customizer is not None else self
-        self._tracked = Tracked(customizer)
+logger = logging.getLogger(__name__)
 
-    async def open(self):
-        self.context.add_service_listener(self._tracked, self._interface, self._query)
-        await self._tracked.track_initial(self._get_initial_references())
 
-    async def close(self):
-        self.context.remove_service_listener(self._tracked)
-        for reference in self.get_service_references():
-            await self._tracked.untrack(reference)
-
-    async def adding_service(self, reference):
-        service = self.context.get_service(reference)
-        await self.on_adding_service(reference, service)
-        return service
-
-    async def modified_service(self, reference, service):
-        await self.on_modified_service(reference, service)
-
-    async def removed_service(self, reference, service):
-        await self.on_removed_service(reference, service)
-        self.context.unget_service(reference)
-
+class IServiceTrackerListener(metaclass=abc.ABCMeta):
+    @abc.abstractmethod
     async def on_adding_service(self, reference, service):
         pass
 
+    @abc.abstractmethod
     async def on_modified_service(self, reference, service):
         pass
 
+    @abc.abstractmethod
     async def on_removed_service(self, reference, service):
         pass
+
+
+class ServiceTracker:
+    def __init__(
+        self, listener: IServiceTrackerListener, context, interface=None, query=None
+    ):
+        self._context = context
+        self._interface = interface
+        self._query = query
+        listener = listener if listener is not None else self
+        self._tracked = _ServiceTracked(context, listener)
+
+    async def open(self):
+        logger.info(f"Start tracking service: {self._interface} query={self._query}")
+        self._context.add_service_listener(self._tracked, self._interface, self._query)
+        await self._tracked.track_initial(self._get_initial_references())
+
+    async def close(self):
+        logger.info(f"Stop tracking service: {self._interface} query={self._query}")
+        self._context.remove_service_listener(self._tracked)
+        for reference in self.get_service_references():
+            await self._tracked.untrack(reference)
 
     def get_service_references(self):
         return sorted(self._tracked.keys())
@@ -62,13 +65,14 @@ class ServiceTracker:
         return None
 
     def _get_initial_references(self):
-        return self.context.get_service_references(self._interface, self._query)
+        return self._context.get_service_references(self._interface, self._query)
 
 
-class Tracked:
-    def __init__(self, customizer):
-        self._tracked = collections.OrderedDict()
-        self._customizer = customizer
+class _ServiceTracked:
+    def __init__(self, context, listener):
+        self.context = context
+        self.tracked = collections.OrderedDict()
+        self.listener = listener
 
     async def service_changed(self, event):
         reference = event.reference
@@ -78,42 +82,64 @@ class Tracked:
             await self.untrack(reference)
 
     async def track(self, reference):
-        if reference in self._tracked:
-            service = self._tracked[reference]
-            await self._customizer.modified_service(reference, service)
+        logger.debug(f"Track service reference: {reference}")
+        if reference in self.tracked:
+            service = self.tracked[reference]
+            await self.modified_service(reference, service)
         else:
-            service = await self._customizer.adding_service(reference)
+            service = await self.adding_service(reference)
             if service is not None:
-                self._tracked[reference] = service
+                self.tracked[reference] = service
                 self._sort()
 
     async def untrack(self, reference):
-        if reference in self._tracked:
-            service = self._tracked[reference]
-            del self._tracked[reference]
+        if reference in self.tracked:
+            logger.debug(f"Untrack service reference: {reference}")
+            service = self.tracked[reference]
+            del self.tracked[reference]
             self._sort()
-            await self._customizer.removed_service(reference, service)
+            await self.removed_service(reference, service)
 
     async def track_initial(self, references):
         for reference in references:
-            service = await self._customizer.adding_service(reference)
+            service = await self.adding_service(reference)
             if service is not None:
-                self._tracked[reference] = service
+                logger.debug(f"Track service reference: {reference}")
+                self.tracked[reference] = service
+
+    async def adding_service(self, reference):
+        service = self.context.get_service(reference)
+        result = self.listener.on_adding_service(reference, service)
+        if asyncio.iscoroutine(result):
+            await result
+        return service
+
+    async def modified_service(self, reference, service):
+        result = self.listener.on_modified_service(reference, service)
+        if asyncio.iscoroutine(result):
+            await result
+
+    async def removed_service(self, reference, service):
+        result = self.listener.on_removed_service(reference, service)
+        if asyncio.iscoroutine(result):
+            await result
+
+        self.context.unget_service(reference)
 
     def keys(self):
-        return self._tracked.keys()
+        return self.tracked.keys()
 
     def values(self):
-        return self._tracked.values()
+        return self.tracked.values()
 
     def items(self):
-        return self._tracked.items()
+        return self.tracked.items()
 
     def _sort(self):
-        refs = sorted(self._tracked.keys())
-        self._tracked = collections.OrderedDict(
-            [(ref, self._tracked[ref]) for ref in refs]
+        refs = sorted(self.tracked.keys())
+        self.tracked = collections.OrderedDict(
+            [(ref, self.tracked[ref]) for ref in refs]
         )
         # for ref in refs:
-        #     tracked[ref] = self._tracked[ref]
-        # self._tracked = tracked
+        #     tracked[ref] = self.tracked[ref]
+        # self.tracked = tracked

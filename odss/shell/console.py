@@ -1,12 +1,8 @@
 import asyncio
-import logging
-import code
 
-
-from . import SERVICE_SHELL  # , SERVICE_SHELL_COMMAND
+from .consts import SERVICE_SHELL  # , SERVICE_SHELL_COMMAND
 from .session import Session
-
-logger = logging.getLogger(__name__)
+from ..core.trackers import ServiceTracker
 
 
 class Activator:
@@ -14,66 +10,45 @@ class Activator:
         pass
 
     async def start(self, ctx):
-        print(f"{__name__} Activator::start()")
-        loop = asyncio.get_event_loop()
-
-        self.console = InteractiveConsole(ctx, loop)
+        self.console = InteractiveConsole(ctx)
         await self.console.start()
-        print(f"{__name__} Activator::start() ::post")
 
     async def stop(self, ctx):
-        print(f"{__name__} Activator::stop()")
         await self.console.stop()
-        print(f"{__name__} Activator::stop() ::post")
 
 
-class InteractiveConsole(code.InteractiveConsole):
-    def __init__(self, ctx, loop):
-        self.ctx = ctx
-        self.session = Session()
+class InteractiveConsole(ServiceTracker):
+    def __init__(self, ctx):
+        super().__init__(self, ctx, SERVICE_SHELL)
+        self.session = Session(self)
         self.shell = None
-        self.shell_ref = None
 
     async def start(self):
-
-        self.shell_event = asyncio.Event()
-        self.search_shell()
-        self.ctx.add_service_listener(self, SERVICE_SHELL)
-        self.task = asyncio.create_task(self.run())
+        await self.open()
 
     async def stop(self):
-        self.ctx.remove_service_listener(self)
+        await self.close()
 
+    def get_completions(self, line):
+        if self.shell:
+            return self.shell.get_all_commands()
+        return []
+
+    def on_adding_service(self, reference, service):
+        if not self.shell:
+            self.shell = service
+            self.task = asyncio.create_task(self.run())
+
+    def on_modified_service(self, reference, service):
+        pass
+
+    def on_removed_service(self, reference, service):
+        self.shell = None
         if not self.task.done():
             self.task.cancel()
-        if self.shell_ref:
-            self.ctx.unget_service(self.shell_ref)
-
-        self.shell = None
-        self.shell_ref = None
-        self.shell_event = None
-
-    def search_shell(self):
-        if self.shell is not None:
-            return
-
-        ref = self.ctx.get_service_reference(SERVICE_SHELL)
-        if ref is not None:
-            self.set_shell(ref)
-
-    def set_shell(self, ref):
-        self.shell = self.ctx.get_service(ref)
-        self.shell_ref = ref
-        self.shell_event.set()
 
     async def run(self):
-        print("InteractiveShell::run()")
-        await self.shell_event.wait()
-
-        while True:
+        while self.shell:
             line = await self.session.readline()
-            # await self.session.write_line(f"Say: {line}")
-            await self.shell.execute(line, self.session)
-
-    async def service_changed(self, event):
-        print(f"{__name__}::service_changed({event})")
+            if self.shell:
+                await self.shell.execute(self.session, line)

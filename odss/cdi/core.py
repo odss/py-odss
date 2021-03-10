@@ -42,7 +42,7 @@ class Activator:
 
 class HandlersTracker(ServiceTracker):
     def __init__(self, context: BundleContext):
-        super().__init__(context, IHandlerFactory)
+        super().__init__(self, context, IHandlerFactory)
         self._handlers = {}
 
     async def on_adding_service(self, reference, service):

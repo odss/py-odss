@@ -1,6 +1,5 @@
 import asyncio
 import sys
-import threading
 
 
 class StandardStreamReaderProtocol(asyncio.StreamReaderProtocol):
@@ -78,7 +77,5 @@ class AStream:
         return data.rstrip("\n")
 
     async def write(self, data):
-        print(f"write: {threading.current_thread().name}")
-
         reader, writer = await self.get_streams()
         writer.write(data)

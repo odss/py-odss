@@ -1,5 +1,5 @@
 from odss.core.bundle import BundleContext
-from tests.interfaces import ITextService
+from tests.core.interfaces import ITextService
 
 
 class NormalEchoServcie:
