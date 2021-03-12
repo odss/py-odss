@@ -85,11 +85,11 @@ class IBundleContext:
 
 
 class Bundle(IBundle):
-    def __init__(self, framework, bundle_id, name, py_module):
+    def __init__(self, framework, bundle_id, name, integration):
         self.__framework = framework
         self.__id = bundle_id
         self.__name = name
-        self.__module = py_module
+        self.__integration = integration
         self.__state = Bundle.RESOLVED
         self.__context = None
 
@@ -109,12 +109,11 @@ class Bundle(IBundle):
     def version(self):
         return "0.0.0"
 
-    @property
-    def location(self):
-        return getattr(self.__module, "__file__", "")
+    def get_location(self):
+        return getattr(self.__integration.module, "__file__", "")
 
     def get_module(self):
-        return self.__module
+        return self.__integration.module
 
     async def start(self):
         await self.__framework.start_bundle(self)

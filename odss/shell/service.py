@@ -35,7 +35,7 @@ class ServiceShell:
             (bundle.id, bundle.name, bundle_state_name(bundle.state), bundle.version)
             for bundle in bundles
         ]
-        return make_ascii_table(header, lines)
+        return make_ascii_table("Bundles", header, lines)
 
     @command("bd")
     def bundle_details(self, session: Session, bundle_id: int):
@@ -85,7 +85,7 @@ class ServiceShell:
             )
             for ref in refs
         ]
-        return make_ascii_table(header, lines)
+        return make_ascii_table("Services", header, lines)
 
     @command("sd")
     def service_details(self, session: Session, service_id: int):
@@ -170,7 +170,7 @@ class ServiceShell:
         """
         properties = self.ctx.get_framework().get_properties().items()
         lines = [item for item in properties]
-        return make_ascii_table(["Property name", "Value"], lines)
+        return make_ascii_table("Properties", ["Property name", "Value"], lines)
 
     @command()
     def log_level(self, session: Session, level: str = None, name: str = None):

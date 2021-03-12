@@ -27,7 +27,7 @@ def _sep_bottom(sizes):
     return f"└{line}┘"
 
 
-def make_ascii_table(headers, records):
+def make_ascii_table(title, headers, records):
 
     sizes = [len(head) for head in headers]
 
@@ -44,8 +44,8 @@ def make_ascii_table(headers, records):
     for size in sizes:
         sformat += f" {{:<{size}}} │"
 
-    buff = []
     sheader = sformat.format(*headers)
+    buff = [title]
     buff.append(_sep_top(sizes))
 
     buff.append(sheader)

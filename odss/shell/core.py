@@ -1,4 +1,3 @@
-
 from ..core.trackers import ServiceTracker
 from .consts import SERVICE_SHELL, SERVICE_SHELL_COMMAND
 from .shell import Shell

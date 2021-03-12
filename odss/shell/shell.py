@@ -260,7 +260,7 @@ def build_params(params):
     for param in params:
         if "=" in param:
             pos = param.find("=")
-            key, value = param[:pos], param[pos + 1:]
+            key, value = param[:pos], param[pos + 1 :]
             kwargs[key] = value
         else:
             args.append(param)

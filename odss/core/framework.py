@@ -8,7 +8,7 @@ from .bundle import Bundle, BundleContext
 from .consts import ACTIVATOR_CLASS, BLOCK_TIMEOUT
 from .errors import BundleException
 from .events import BundleEvent, EventDispatcher, FrameworkEvent, ServiceEvent
-from .loader import load_bundle, unload_bundle
+from .loader import Integration, load_bundle, unload_bundle
 from .loop import TaskRunner
 from .registry import ServiceRegistry
 
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 class Framework(Bundle):
     def __init__(self, properties):
-        super().__init__(self, 0, "atto.framework", sys.modules[__name__])
+        super().__init__(self, 0, "atto.framework", Integration(sys.modules[__name__]))
         self.loop: asyncio.events.AbstractEventLoop = asyncio.get_event_loop()
         self.__properties = properties
         self.__bundles = []
@@ -109,16 +109,16 @@ class Framework(Bundle):
         await self.__events.services.fire_event(event)
 
     async def install_bundle(self, name, path=None):
-        logger.info('Install bundle: "{}" (path={})'.format(name, path))
         for bundle in self.__bundles:
             if bundle.name == name:
                 logger.debug('Already installed bundle: "%s"', name)
                 return
 
-        module_ = await self.create_job(load_bundle, name, path)
+        logger.info('Install bundle: "{}"'.format(name, path))
+        integration = await load_bundle(self.__runner, name, path)
 
         bundle_id = self.__next_id
-        bundle = Bundle(self, bundle_id, name, module_)
+        bundle = Bundle(self, bundle_id, name, integration)
         self.__bundles.append(bundle)
         self.__bundles_map[bundle_id] = bundle
         self.__next_id += 1
