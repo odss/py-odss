@@ -1,8 +1,8 @@
 import pytest
 
 from odss.core.trackers import ServiceTracker
-from tests.utils import TEXT_BUNDLE, TRANSLATE_BUNDLE
 from tests.core.interfaces import ITextService
+from tests.utils import TEXT_BUNDLE, TRANSLATE_BUNDLE
 
 
 @pytest.mark.asyncio

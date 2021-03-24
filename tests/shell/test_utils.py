@@ -8,9 +8,10 @@ def test_create_simple_ascii_table():
         (2, "Test2", 20),
         (3, "Test3", 30),
     )
-    output = make_ascii_table(headers, records)
+    output = make_ascii_table("Title", headers, records)
     expected = clean_text(
         """
+        Title
         ┌────┬───────┬───────┐
         │ ID │ Name  │ Value │
         ├────┼───────┼───────┤

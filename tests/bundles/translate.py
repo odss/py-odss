@@ -1,7 +1,6 @@
 from odss.core.bundle import BundleContext
 from tests.core.interfaces import ITranslateService
 
-
 TRANSLATE = {"hello": "cześć", "world": "świat"}
 
 
@@ -14,10 +13,10 @@ class Activator:
     async def start(self, context):
         assert isinstance(context, BundleContext)
         props = {"locale": "pl"}
-        self.reg = await context.register_service(
+        Activator.service_registration = await context.register_service(
             ITranslateService, TranslateService(), props
         )
 
     async def stop(self, context):
         assert isinstance(context, BundleContext)
-        await self.reg.unregister()
+        await Activator.service_registration.unregister()

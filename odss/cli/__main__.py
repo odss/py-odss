@@ -1,7 +1,5 @@
 import argparse
 import asyncio
-import os
-import json
 import logging
 
 from odss import consts
@@ -34,7 +32,9 @@ def get_arguments() -> argparse.Namespace:
     )
     group.add_argument(
         "-b",
+        "--bundle",
         nargs="+",
+        action="extend",
         dest="bundles",
         help="Sets of bundles",
     )
@@ -54,7 +54,7 @@ def get_arguments() -> argparse.Namespace:
 
 
 def handle_args(args):
-    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.WARNING)
+    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
 
     set_uv_loop()
 

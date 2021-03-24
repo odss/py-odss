@@ -1,7 +1,7 @@
 import abc
-import logging
 import asyncio
 import collections
+import logging
 
 from .events import ServiceEvent
 

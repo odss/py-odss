@@ -1,13 +1,13 @@
 import pytest
 
-from odss.core import create_framework, Callback
+from odss.core import Callback, create_framework
+from odss.core.consts import OBJECTCLASS, SERVICE_ID, SERVICE_BUNDLE_ID, SERVICE_RANKING
 from odss.core.errors import BundleException
 from odss.core.events import BundleEvent, FrameworkEvent, ServiceEvent
 from odss.core.registry import ServiceReference
-from odss.core.consts import OBJECTCLASS, SERVICE_ID
-
-from tests.utils import SIMPLE_BUNDLE, TRANSLATE_BUNDLE
 from tests.core.interfaces import ITextService
+from tests.bundles.translate import Activator as TActivator
+from tests.utils import SIMPLE_BUNDLE, TRANSLATE_BUNDLE
 
 pytestmark = pytest.mark.asyncio
 
@@ -171,6 +171,7 @@ async def test_service_events(framework, listener):
     assert events[0].kind == ServiceEvent.REGISTERED
 
     await bundle.stop()
+
     assert events[1].kind == ServiceEvent.UNREGISTERING
 
     await framework.uninstall_bundle(bundle)
@@ -178,6 +179,41 @@ async def test_service_events(framework, listener):
     assert len(events) == 2
 
     context.remove_service_listener(listener)
+
     await bundle.start()
     await bundle.stop()
     assert len(events) == 2
+
+
+@pytest.mark.asyncio
+async def test_service_events_modified(framework, events, listener):
+    context = framework.get_context()
+
+    context.add_service_listener(listener, ITextService)
+    reg = await context.register_service(ITextService, "mock service")
+
+    ref = reg.get_reference()
+    old_sort_value = ref.get_sort_value()
+
+    await reg.set_properties(
+        {
+            "foo": "bar",
+            OBJECTCLASS: "test",
+            SERVICE_ID: 12345,
+            SERVICE_BUNDLE_ID: 12345,
+            SERVICE_RANKING: 12345,
+        }
+    )
+    assert ref.get_sort_value() != old_sort_value
+    props = ref.get_properties()
+    assert props[OBJECTCLASS] != "test"
+    assert props[SERVICE_ID] != 12345
+    assert props[SERVICE_BUNDLE_ID] != 12345
+    assert props[SERVICE_RANKING] == 12345
+
+    await reg.unregister()
+
+    assert len(listener) == 3
+    assert listener.events[0].kind == ServiceEvent.REGISTERED
+    assert listener.events[1].kind == ServiceEvent.MODIFIED
+    assert listener.events[2].kind == ServiceEvent.UNREGISTERING

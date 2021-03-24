@@ -1,8 +1,8 @@
 import asyncio
 
+from ..core.trackers import ServiceTracker
 from .consts import SERVICE_SHELL  # , SERVICE_SHELL_COMMAND
 from .session import Session
-from ..core.trackers import ServiceTracker
 
 
 class Activator:

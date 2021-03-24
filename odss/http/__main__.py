@@ -33,7 +33,6 @@ def ensure_config_path(config_dir: str) -> None:
 
 
 async def setup_and_run_odss(config_dir):
-    print(threading.current_thread().name)
     framework = Framework({"http.server.host": "127.0.0.1", "http.server.port": 8080})
 
     await framework.install_bundle("odss.http.server")

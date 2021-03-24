@@ -1,14 +1,16 @@
-import importlib
-from importlib.metadata import version, PackageNotFoundError
-import sys
 import asyncio
-import pathlib
-import logging
 import contextlib
-import typing as t
+import importlib
 import json
-import pkg_resources
+import logging
+import os
+import pathlib
+import subprocess
+import sys
+import typing as t
+from importlib.metadata import PackageNotFoundError, version
 
+import pkg_resources
 
 logger = logging.getLogger(__name__)
 
@@ -109,10 +111,15 @@ async def process_requirements(runner, name, requirements):
         for requirement in requirements:
             if is_installed(requirement):
                 continue
-            logger.error("Missing package: %s for %s", requirement, name)
+            logger.info("Install package: %s for: %s", requirement, name)
+            status = await runner.create_job(install_package, requirement)
+            if not status:
+                logger.error(
+                    "Problem with install package: %s for %s", requirement, name
+                )
 
 
-def is_installed(package):
+def is_installed(package: str):
     try:
         req = pkg_resources.Requirement.parse(package)
     except ValueError:
@@ -122,3 +129,21 @@ def is_installed(package):
         return version(req.project_name) in req
     except PackageNotFoundError:
         return False
+
+
+def install_package(package: str):
+    env = os.environ.copy()
+    args = [sys.executable, "-m", "pip", "install", package]
+    process = subprocess.Popen(
+        args,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=env,
+    )
+    stdout, stderr = process.communicate()
+    if process.returncode != 0:
+        # msg = stderr.decode("utf-8").lstrip().strip()
+        logger.error("Unable to install package: %s: %s", package)
+        return False
+    return True

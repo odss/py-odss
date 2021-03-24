@@ -1,29 +1,18 @@
 import asyncio
-import io
-import sys
-import shlex
 import collections
 import inspect
+import io
 import logging
-import typing as t
+import shlex
+import sys
 import traceback
+import typing as t
 
-from .session import Session
+from .consts import DEFAULT_NAMESPACE, ODSS_SHELL_COMMAND_HANDLER
 from .decorators import command
-from .consts import ODSS_SHELL_COMMAND_HANDLER, DEFAULT_NAMESPACE
+from .session import Session
 
 logger = logging.getLogger(__name__)
-
-
-HandlerInfo = t.Tuple[str, t.Callable, t.Dict[str, t.Any]]
-
-
-def _extract_command_handlers(obj: t.Any) -> HandlerInfo:
-    method = inspect.getmembers(obj, inspect.isroutine)
-    for _, fn in method:
-        attrs = getattr(fn, ODSS_SHELL_COMMAND_HANDLER, None)
-        if attrs:
-            yield fn, attrs
 
 
 class Shell:
@@ -56,7 +45,7 @@ class Shell:
 
     def _print_command_help(self, session: Session, namespace: str, name: str):
         command = self._commands[namespace][name]
-        args, doc = get_command_info(command)
+        args, doc = _get_command_info(command)
         sargs = ", ".join(args[1:])
         session.write_line(f"- {name:10} {sargs:<15} {doc}")
 
@@ -200,7 +189,7 @@ class Shell:
         if not line_parts:
             return False
 
-        args, kwargs = build_params(line_parts[1:])
+        args, kwargs = _build_params(line_parts[1:])
 
         try:
             namespace, name = self._parse_command_name(line_parts[0])
@@ -218,13 +207,13 @@ class Shell:
         except Exception:
             # error_msg = "{0} - {1}".format(type(ex).__name__, str(ex))
             # session.write_line(error_msg)
-            trace = format_exception(sys.exc_info())
+            trace = _format_exception(sys.exc_info())
             session.write_line(trace)
 
         return False
 
     def _parse_command_name(self, name: str):
-        namespace, cmdname = split_command_name(name)
+        namespace, cmdname = _split_command_name(name)
         if namespace not in self._commands:
             raise ValueError(f"Unknown command: {name}")
 
@@ -235,7 +224,7 @@ class Shell:
         return namespace, name
 
 
-def format_exception(exc_info):
+def _format_exception(exc_info):
     sio = io.StringIO()
     type, value, tb = exc_info
     traceback.print_exception(type, value, tb, None, sio)
@@ -246,7 +235,7 @@ def format_exception(exc_info):
     return s
 
 
-def split_command_name(
+def _split_command_name(
     name: str, default_namespace=DEFAULT_NAMESPACE
 ) -> t.Tuple[str, str]:
     parts = name.split(".")
@@ -255,7 +244,7 @@ def split_command_name(
     return parts[0].lower(), parts[1].lower()
 
 
-def build_params(params):
+def _build_params(params):
     args, kwargs = [], {}
     for param in params:
         if "=" in param:
@@ -270,7 +259,7 @@ def build_params(params):
 CommandInfo = t.Tuple[t.List[str], str]
 
 
-def get_command_info(command: t.Any) -> CommandInfo:
+def _get_command_info(command: t.Any) -> CommandInfo:
     args = []
     for param in inspect.signature(command).parameters.values():
         if param.kind == inspect.Parameter.VAR_POSITIONAL:
@@ -286,3 +275,14 @@ def get_command_info(command: t.Any) -> CommandInfo:
             args.append(arg)
 
     return args, inspect.getdoc(command) or ""
+
+
+HandlerInfo = t.Tuple[str, t.Callable, t.Dict[str, t.Any]]
+
+
+def _extract_command_handlers(obj: t.Any) -> HandlerInfo:
+    method = inspect.getmembers(obj, inspect.isroutine)
+    for _, fn in method:
+        attrs = getattr(fn, ODSS_SHELL_COMMAND_HANDLER, None)
+        if attrs:
+            yield fn, attrs

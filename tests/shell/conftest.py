@@ -1,7 +1,7 @@
 import pytest
 
-from odss.shell.shell import Shell
 from odss.shell.session import Session
+from odss.shell.shell import Shell
 
 
 class TestSession(Session):

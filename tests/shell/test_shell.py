@@ -1,6 +1,5 @@
 import pytest
 
-
 from odss.shell.decorators import command
 from odss.shell.shell import Shell
 

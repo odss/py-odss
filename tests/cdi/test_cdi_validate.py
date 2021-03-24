@@ -1,6 +1,6 @@
 import pytest
 
-from tests.cdi.interfaces import IService, IStorage, IListener, IManager
+from tests.cdi.interfaces import IListener, IManager, IService, IStorage
 
 
 @pytest.mark.asyncio

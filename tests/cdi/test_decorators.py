@@ -1,13 +1,14 @@
 import pytest
-from odss.cdi.contexts import get_factory_context
+
 from odss.cdi import consts
+from odss.cdi.contexts import get_factory_context
 from odss.cdi.decorators import (
     Component,
-    Requires,
-    Provides,
     Instantiate,
-    Validate,
     Invalidate,
+    Provides,
+    Requires,
+    Validate,
 )
 
 

@@ -31,7 +31,6 @@ class BindHandlerService(IHandler):
     def __init__(self, requirement, binder) -> None:
         self.requirement = requirement
         self.binder = binder
-        # print("RequiresHandlerService", specifications)
         self.tracker = None
 
     def setup(self, component: ComponentManager):

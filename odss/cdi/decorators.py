@@ -96,8 +96,6 @@ def Provides(specifications):
 
 
 def Property(field, name, value=None):
-    print("Property")
-
     def propert_decorator(method):
         return method
 

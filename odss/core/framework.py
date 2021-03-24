@@ -2,6 +2,7 @@ import asyncio
 import logging
 import signal
 import sys
+
 import async_timeout
 
 from .bundle import Bundle, BundleContext
@@ -24,8 +25,8 @@ class Framework(Bundle):
         self.__bundles_map = {}
         self.__next_id = 1
         self.__runner = TaskRunner(self.loop)
-        self.__registry = ServiceRegistry(self.unregister_service)
         self.__events = EventDispatcher(self.__runner)
+        self.__registry = ServiceRegistry(self)
 
         self.__activators = {}
 
@@ -94,7 +95,7 @@ class Framework(Bundle):
 
         registration = self.__registry.register(bundle, clazz, service, properties)
 
-        await self.__fire_service_event(
+        await self._fire_service_event(
             ServiceEvent.REGISTERED, registration.get_reference()
         )
         return registration
@@ -123,14 +124,14 @@ class Framework(Bundle):
         self.__bundles_map[bundle_id] = bundle
         self.__next_id += 1
 
-        await self.__fire_bundle_event(BundleEvent.INSTALLED, bundle)
+        await self._fire_bundle_event(BundleEvent.INSTALLED, bundle)
         return bundle
 
     async def uninstall_bundle(self, bundle):
         if bundle in self.__bundles:
             await bundle.stop()
             bundle._set_state(Bundle.UNINSTALLED)
-            await self.__fire_bundle_event(BundleEvent.UNINSTALLED, bundle)
+            await self._fire_bundle_event(BundleEvent.UNINSTALLED, bundle)
 
             del self.__bundles_map[bundle.id]
             self.__bundles.remove(bundle)
@@ -145,7 +146,7 @@ class Framework(Bundle):
             return False
 
         self._set_state(Bundle.STARTING)
-        await self.__fire_framework_event(BundleEvent.STARTING)
+        await self._fire_framework_event(BundleEvent.STARTING)
 
         for bundle in self.__bundles:
             try:
@@ -156,7 +157,7 @@ class Framework(Bundle):
                 )
 
         self._set_state(Bundle.ACTIVE)
-        await self.__fire_framework_event(BundleEvent.STARTED)
+        await self._fire_framework_event(BundleEvent.STARTED)
 
         if attach_signals:
             self._stopped = asyncio.Event()
@@ -172,7 +173,7 @@ class Framework(Bundle):
             return False
 
         self._set_state(Bundle.STOPPING)
-        await self.__fire_framework_event(BundleEvent.STOPPING)
+        await self._fire_framework_event(BundleEvent.STOPPING)
 
         for bundle in self.__bundles[::-1]:
             if self.state != Bundle.ACTIVE:
@@ -186,7 +187,7 @@ class Framework(Bundle):
                 logger.debug("Bundle %s already stoped", bundle)
 
         self._set_state(Bundle.RESOLVED)
-        await self.__fire_framework_event(BundleEvent.STOPPED)
+        await self._fire_framework_event(BundleEvent.STOPPED)
         if hasattr(self, "_stopped"):
             self._stopped.set()
 
@@ -200,7 +201,7 @@ class Framework(Bundle):
         context = BundleContext(self, bundle, self.__events)
         bundle.set_context(context)
         bundle._set_state(Bundle.STARTING)
-        await self.__fire_bundle_event(BundleEvent.STARTING, bundle)
+        await self._fire_bundle_event(BundleEvent.STARTING, bundle)
 
         try:
             start_method = self.__get_activator_method(bundle, "start")
@@ -215,7 +216,7 @@ class Framework(Bundle):
             raise ex
 
         bundle._set_state(Bundle.ACTIVE)
-        await self.__fire_bundle_event(BundleEvent.STARTED, bundle)
+        await self._fire_bundle_event(BundleEvent.STARTED, bundle)
         return True
 
     async def stop_bundle(self, bundle):
@@ -225,7 +226,7 @@ class Framework(Bundle):
         previous_state = bundle.state
 
         bundle._set_state(Bundle.STOPPING)
-        await self.__fire_bundle_event(BundleEvent.STOPPING, bundle)
+        await self._fire_bundle_event(BundleEvent.STOPPING, bundle)
 
         try:
             stop_method = self.__get_activator_method(bundle, "stop")
@@ -244,7 +245,7 @@ class Framework(Bundle):
 
         bundle.remove_context()
         bundle._set_state(Bundle.RESOLVED)
-        await self.__fire_bundle_event(BundleEvent.STOPPED, bundle)
+        await self._fire_bundle_event(BundleEvent.STOPPED, bundle)
         return True
 
     def __get_activator_method(self, bundle, name):
@@ -257,14 +258,16 @@ class Framework(Bundle):
             return getattr(activator, name, None)
         return None
 
-    async def __fire_framework_event(self, kind):
+    async def _fire_framework_event(self, kind):
         await self.__events.framework.fire_event(FrameworkEvent(kind, self))
 
-    async def __fire_bundle_event(self, kind, bundle):
+    async def _fire_bundle_event(self, kind, bundle):
         await self.__events.bundles.fire_event(BundleEvent(kind, bundle))
 
-    async def __fire_service_event(self, kind, reference):
-        await self.__events.services.fire_event(ServiceEvent(kind, reference))
+    async def _fire_service_event(self, kind, reference, properties=None):
+        await self.__events.services.fire_event(
+            ServiceEvent(kind, reference, properties)
+        )
 
 
 def register_signal_handling(framework) -> None:

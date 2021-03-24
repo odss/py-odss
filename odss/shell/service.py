@@ -1,10 +1,10 @@
 import logging
 
-from ..core.consts import SERVICE_ID, OBJECTCLASS, SERVICE_RANKING
+from ..core.consts import OBJECTCLASS, SERVICE_ID, SERVICE_RANKING
 from .consts import SERVICE_SHELL_COMMAND
 from .decorators import command
 from .session import Session
-from .utils import make_ascii_table, bundle_state_name
+from .utils import bundle_state_name, make_ascii_table
 
 
 class Activator:

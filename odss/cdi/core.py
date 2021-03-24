@@ -46,7 +46,6 @@ class HandlersTracker(ServiceTracker):
         self._handlers = {}
 
     async def on_adding_service(self, reference, service):
-        # print("on_adding_service", service)
         name = reference.get_property(PROP_HANDLER_NAME)
         if name in self._handlers:
             raise NameError(name)
@@ -56,7 +55,6 @@ class HandlersTracker(ServiceTracker):
         pass
 
     async def on_removed_service(self, reference, service):
-        # print("on_removed_service", service)
         name = reference.get_property(PROP_HANDLER_NAME)
         del self._handlers[name]
 
