@@ -28,10 +28,11 @@ class route:
         setattr(fn, ODSS_HTTP_ROUTE_HANDLER, self.options)
         return fn
 
-    get = _create_route_decorator("GET")
-    post = _create_route_decorator("POST")
-    delete = _create_route_decorator("DELETE")
-    put = _create_route_decorator("PUT")
-    patch = _create_route_decorator("PATCH")
-    option = _create_route_decorator("OPTIONS")
-    head = _create_route_decorator("HEAD")
+
+get = _create_route_decorator("GET")
+post = _create_route_decorator("POST")
+delete = _create_route_decorator("DELETE")
+put = _create_route_decorator("PUT")
+patch = _create_route_decorator("PATCH")
+option = _create_route_decorator("OPTIONS")
+head = _create_route_decorator("HEAD")

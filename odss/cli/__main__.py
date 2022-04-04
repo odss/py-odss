@@ -3,7 +3,7 @@ import asyncio
 import logging
 
 from odss import consts
-from odss.core.framework import Framework
+from odss.core import Framework
 from odss.shell.utils import make_ascii_table
 
 from .config import ConfigLoader
@@ -66,7 +66,7 @@ def handle_args(args):
     config.bundles.extend(args.bundles or [])
     if args.shell:
         config.bundles.extend(
-            ["odss.shell.core", "odss.shell.service", "odss.shell.console"]
+            ["odss.shell.core", "odss.shell.service", "odss.terminal.main"]
         )
     config.normalize()
     return config
@@ -89,7 +89,10 @@ def main():
     args = get_arguments()
     config = handle_args(args)
     try:
-        asyncio.run(setup_and_run_odss(config), debug=config.debug)
+        asyncio.run(
+            setup_and_run_odss(config),
+            # debug=config.debug
+        )
     except KeyboardInterrupt:
         pass
 

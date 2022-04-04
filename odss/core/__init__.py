@@ -1,6 +1,8 @@
 from .framework import Framework
 from .loop import Callback  # noqa.
 
+from .types import IBundle, IBundleContext
+
 
 async def create_framework(settings=None, bundles=None):
     framework = Framework(settings)

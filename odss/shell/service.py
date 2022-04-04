@@ -1,9 +1,8 @@
 import logging
 
-from ..core.consts import OBJECTCLASS, SERVICE_ID, SERVICE_RANKING
+from ..core.consts import OBJECTCLASS, SERVICE_ID, SERVICE_PRIORITY
 from .consts import SERVICE_SHELL_COMMAND
 from .decorators import command
-from .session import Session
 from .utils import bundle_state_name, make_ascii_table
 
 
@@ -14,7 +13,7 @@ class Activator:
     async def start(self, ctx):
         self.shell = ServiceShell(ctx)
 
-        await ctx.register_service(SERVICE_SHELL_COMMAND, self.shell)
+        ctx.register_service(SERVICE_SHELL_COMMAND, self.shell)
 
     async def stop(self, ctx):
         pass
@@ -25,7 +24,7 @@ class ServiceShell:
         self.ctx = ctx
 
     @command("bl")
-    def bundles_list(self, session: Session):
+    def bundles_list(self, session):
         """
         List all installed bundles
         """
@@ -38,7 +37,7 @@ class ServiceShell:
         return make_ascii_table("Bundles", header, lines)
 
     @command("bd")
-    def bundle_details(self, session: Session, bundle_id: int):
+    def bundle_details(self, session, bundle_id: int):
         """
         Show bundle details
         """
@@ -51,7 +50,7 @@ class ServiceShell:
             "Name....: {0}".format(bundle.name),
             "State...: {0}".format(bundle_state_name(bundle.state)),
             "Version.: {0}".format(bundle.version),
-            "Location: {0}".format(bundle.location),
+            # "Location: {0}".format(bundle.location),
             "Published services:",
         ]
         refs = ["    {0}".format(ref) for ref in bundle.get_references()]
@@ -60,6 +59,7 @@ class ServiceShell:
         else:
             buff.append("    n/a")
         buff.append("Services using by bundle:")
+
 
         refs = ["    {0}".format(ref) for ref in bundle.get_using_services()]
         if refs:
@@ -70,7 +70,7 @@ class ServiceShell:
         return buff
 
     @command("sl")
-    def services_list(self, session: Session, spec: str = None):
+    def services_list(self, session, spec: str = None):
         """
         List all registred services
         """
@@ -81,14 +81,14 @@ class ServiceShell:
                 str(ref.get_property(SERVICE_ID)),
                 str(ref.get_property(OBJECTCLASS)),
                 str(ref.get_bundle()),
-                str(ref.get_property(SERVICE_RANKING)),
+                str(ref.get_property(SERVICE_PRIORITY)),
             )
             for ref in refs
         ]
         return make_ascii_table("Services", header, lines)
 
     @command("sd")
-    def service_details(self, session: Session, service_id: int):
+    def service_details(self, session, service_id: int):
         """
         Show service details
         """
@@ -100,7 +100,7 @@ class ServiceShell:
         lines = [
             "ID...........: {0}".format(props[SERVICE_ID]),
             "Classes......: {0}".format(props[OBJECTCLASS]),
-            "Rank.........: {0}".format(props[SERVICE_RANKING]),
+            "Rank.........: {0}".format(props[SERVICE_PRIORITY]),
             "Bundle.......: {0}".format(ref.get_bundle()),
             "Properties...:",
         ]
@@ -118,7 +118,7 @@ class ServiceShell:
         return lines
 
     @command("install")
-    async def install_bundle(self, session: Session, name: str):
+    async def install_bundle(self, session, name: str):
         """
         Install the bundle with the given name.
         """
@@ -126,7 +126,7 @@ class ServiceShell:
         return f"Bundle ID: {bundle.id}"
 
     @command("uninstall")
-    async def uninstall_bundle(self, session: Session, bundle_id: int):
+    async def uninstall_bundle(self, session, bundle_id: int):
         """
         Uninstall the bundle with the given ID.
         """
@@ -140,7 +140,7 @@ class ServiceShell:
             await bundle.uninstall()
 
     @command("start")
-    async def start_bundle(self, session: Session, bundle_id: int):
+    async def start_bundle(self, session, bundle_id: int):
         """
         Start the bundle with the given ID.
         """
@@ -152,7 +152,7 @@ class ServiceShell:
         await bundle.start()
 
     @command("stop")
-    async def stop_bundle(self, session: Session, bundle_id: int):
+    async def stop_bundle(self, session, bundle_id: int):
         """
         Stop the bundle with the given ID.
         """
@@ -164,7 +164,7 @@ class ServiceShell:
         await bundle.stop()
 
     @command()
-    def properties(self, session: Session):
+    def properties(self, session):
         """
         List of all properties
         """
@@ -173,7 +173,7 @@ class ServiceShell:
         return make_ascii_table("Properties", ["Property name", "Value"], lines)
 
     @command()
-    def log_level(self, session: Session, level: str = None, name: str = None):
+    def log_level(self, session, level: str = None, name: str = None):
         """
         Prints/Changes log level
         """

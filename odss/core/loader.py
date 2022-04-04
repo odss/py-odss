@@ -4,10 +4,12 @@ import importlib
 import json
 import logging
 import os
-import pathlib
 import subprocess
 import sys
+import dataclasses as dts
 import typing as t
+import importlib.util
+from pathlib import Path
 from importlib.metadata import PackageNotFoundError, version
 
 import pkg_resources
@@ -17,10 +19,19 @@ logger = logging.getLogger(__name__)
 pip_lock = asyncio.Lock()
 
 
-async def load_bundle(runner, name: str, path: str = None):
-    integration = await runner.create_job(Integration.load, name, path)
-    if integration.requirements:
-        await process_requirements(runner, name, integration.requirements)
+@dts.dataclass(frozen=True)
+class Manifest:
+    requirements: t.List[str]
+    references: t.List[str]
+
+
+async def load_bundle(runner, name: str, path: str = None) -> "Integration":
+    manifest = await runner.run_job(find_manifest, name, path)
+    if manifest:
+        await process_requirements(runner, name, manifest.requirements)
+
+    integration = await runner.run_job(Integration.load_sync, name, path)
+    integration.manifest = manifest
     return integration
 
 
@@ -34,10 +45,39 @@ def import_module(name: str, path: str = None):
         raise RuntimeError("Error installing bundle '{0}': {1}".format(name, ex))
 
 
+def find_manifest(name: str, path: str = None):
+    with sys_path(path):
+        spec = importlib.util.find_spec(name)
+
+    manifest_data = {}
+    if spec and spec.origin:
+        dir_path = Path(spec.origin).parent
+        manifest_path = Path(dir_path) / "manifest.json"
+        if manifest_path.is_file():
+            try:
+                manifest_data = json.loads(manifest_path.read_text())
+            except ValueError as err:
+                logger.error(
+                    "Error parsing manifest.json file at %s: %s", manifest_path, err
+                )
+    return Manifest(
+        manifest_data.get("requirements", []),
+        manifest_data.get("references", []),
+    )
+
+
 def unload_bundle(name):
     try:
         del sys.modules[name]
     except KeyError:
+        pass
+
+    try:
+        # Clear parent reference
+        parent, basename = name.rsplit(".", 1)
+        if parent:
+            delattr(sys.modules[parent], basename)
+    except (KeyError, AttributeError, ValueError):
         pass
 
 
@@ -52,40 +92,15 @@ def sys_path(path):
             sys.path.remove(path)
 
 
-Manifest = t.TypedDict(
-    "Manifest", {"references": t.List[str], "requirements": t.List[str]}
-)
-
-
 def is_package(module) -> bool:
     return hasattr(module, "__path__")
 
 
 class Integration:
     @classmethod
-    def load(cls, name: str, include_path: str = None):
+    def load_sync(cls, name: str, include_path: str = None):
         module = import_module(name, include_path)
-        manifest = None
-        if is_package(module):  # package
-            for base in module.__path__:
-                manifest_path = pathlib.Path(base) / "manifest.json"
-                if not manifest_path.is_file():
-                    continue
-
-                try:
-                    manifest = json.loads(manifest_path.read_text())
-                except ValueError as err:
-                    logger.error(
-                        "Error parsing manifest.json file at %s: %s", manifest_path, err
-                    )
-                    continue
-
-        if manifest is None:
-            manifest = {
-                "references": getattr(module, "REFERENCES", []),
-                "requirements": getattr(module, "REQUIREMENTS", []),
-            }
-        return cls(module, manifest, include_path)
+        return cls(module, None, include_path)
 
     def __init__(
         self,
@@ -99,11 +114,11 @@ class Integration:
 
     @property
     def references(self):
-        return self.manifest.get("references", [])
+        return self.manifest.references
 
     @property
     def requirements(self):
-        return self.manifest.get("requirements", [])
+        return self.manifest.requirements
 
 
 async def process_requirements(runner, name, requirements):
@@ -112,7 +127,7 @@ async def process_requirements(runner, name, requirements):
             if is_installed(requirement):
                 continue
             logger.info("Install package: %s for: %s", requirement, name)
-            status = await runner.create_job(install_package, requirement)
+            status = await install_package(requirement)
             if not status:
                 logger.error(
                     "Problem with install package: %s for %s", requirement, name
@@ -131,19 +146,23 @@ def is_installed(package: str):
         return False
 
 
-def install_package(package: str):
+async def install_package(package: str):
     env = os.environ.copy()
-    args = [sys.executable, "-m", "pip", "install", package]
-    process = subprocess.Popen(
-        args,
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        env=env,
+    args = []
+    process = await asyncio.create_subprocess_exec(
+        sys.executable,
+        "-m",
+        "pip",
+        "install",
+        package,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
     )
-    stdout, stderr = process.communicate()
+
+    stdout, stderr = await process.communicate()
+
     if process.returncode != 0:
-        # msg = stderr.decode("utf-8").lstrip().strip()
-        logger.error("Unable to install package: %s: %s", package)
+        msg = stderr.decode("utf-8").lstrip().strip()
+        logger.error("Unable to install package: %s: %s", package, msg)
         return False
     return True

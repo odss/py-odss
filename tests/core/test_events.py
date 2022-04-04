@@ -1,15 +1,14 @@
+import asyncio
 import pytest
 
 from odss.core import Callback, create_framework
-from odss.core.consts import OBJECTCLASS, SERVICE_ID, SERVICE_BUNDLE_ID, SERVICE_RANKING
+from odss.core.consts import OBJECTCLASS, SERVICE_ID, SERVICE_BUNDLE_ID, SERVICE_PRIORITY
 from odss.core.errors import BundleException
 from odss.core.events import BundleEvent, FrameworkEvent, ServiceEvent
 from odss.core.registry import ServiceReference
 from tests.core.interfaces import ITextService
 from tests.bundles.translate import Activator as TActivator
 from tests.utils import SIMPLE_BUNDLE, TRANSLATE_BUNDLE
-
-pytestmark = pytest.mark.asyncio
 
 
 def test_add_incorrect_bundle_listener(events):
@@ -45,10 +44,9 @@ def test_incorrect_framework_listener(events):
     with pytest.raises(BundleException):
         events.add_framework_listener(Listener())
 
-
+@pytest.mark.asyncio
 async def test_error_in_listener(events, listener):
     class ErrorListener:
-        @Callback
         def bundle_changed(self, event):
             raise Exception("buu")
 
@@ -90,13 +88,19 @@ async def test_service_listener_all_interfaces(events, listener):
     event = ServiceEvent(ServiceEvent.REGISTERED, reference)
     assert events.add_service_listener(listener)
     assert not events.add_service_listener(listener)
-    await events.fire_service_event(event)
+    events.fire_service_event(event)
+
+    await asyncio.sleep(0.01)
+
     assert len(listener) == 1
     assert listener.last_event() == event
 
     assert events.remove_service_listener(listener)
     assert not events.remove_service_listener(listener)
-    await events.fire_service_event(event)
+    events.fire_service_event(event)
+
+    await asyncio.sleep(0.1)
+
     assert len(listener) == 1
 
 
@@ -105,8 +109,10 @@ async def test_service_listener_with_interface(framework, events, listener):
     context = framework.get_context()
 
     context.add_service_listener(listener, ITextService)
-    reg = await context.register_service(ITextService, "mock service")
-    await reg.unregister()
+    reg = context.register_service(ITextService, "mock service")
+    reg.unregister()
+
+    await asyncio.sleep(0.1)
 
     assert len(listener) == 2
     assert listener.events[0].kind == ServiceEvent.REGISTERED
@@ -159,7 +165,7 @@ async def test_bundle_events(framework, listener):
 
 
 @pytest.mark.asyncio
-async def test_service_events(framework, listener):
+async def test_service_events(event_loop, framework, listener):
     context = framework.get_context()
     context.add_service_listener(listener)
 
@@ -168,16 +174,26 @@ async def test_service_events(framework, listener):
     bundle = await framework.install_bundle(TRANSLATE_BUNDLE)
 
     await bundle.start()
+
+    tasks = asyncio.all_tasks(event_loop)
+
+    await asyncio.sleep(0.1)
+
+    assert len(events) == 1
     assert events[0].kind == ServiceEvent.REGISTERED
 
     await bundle.stop()
 
+    await asyncio.sleep(0.1)
+
+    assert len(events) == 2
     assert events[1].kind == ServiceEvent.UNREGISTERING
 
     await framework.uninstall_bundle(bundle)
 
-    assert len(events) == 2
+    await asyncio.sleep(0.1)
 
+    assert len(events) == 2
     context.remove_service_listener(listener)
 
     await bundle.start()
@@ -190,28 +206,30 @@ async def test_service_events_modified(framework, events, listener):
     context = framework.get_context()
 
     context.add_service_listener(listener, ITextService)
-    reg = await context.register_service(ITextService, "mock service")
+    reg = context.register_service(ITextService, "mock service")
 
     ref = reg.get_reference()
     old_sort_value = ref.get_sort_value()
 
-    await reg.set_properties(
+    reg.set_properties(
         {
             "foo": "bar",
             OBJECTCLASS: "test",
             SERVICE_ID: 12345,
             SERVICE_BUNDLE_ID: 12345,
-            SERVICE_RANKING: 12345,
+            SERVICE_PRIORITY: 12345,
         }
     )
-    assert ref.get_sort_value() != old_sort_value
+    ref.get_sort_value() != old_sort_value
     props = ref.get_properties()
     assert props[OBJECTCLASS] != "test"
     assert props[SERVICE_ID] != 12345
     assert props[SERVICE_BUNDLE_ID] != 12345
-    assert props[SERVICE_RANKING] == 12345
+    assert props[SERVICE_PRIORITY] == 12345
 
-    await reg.unregister()
+    reg.unregister()
+
+    await asyncio.sleep(0.01)
 
     assert len(listener) == 3
     assert listener.events[0].kind == ServiceEvent.REGISTERED

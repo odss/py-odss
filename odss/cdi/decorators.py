@@ -25,11 +25,11 @@ def _only_classes(self, clazz: TClass) -> None:
         raise TypeError(msg)
 
 
-def Component(name):
+def component(name):
     if not name:
         raise TypeError("Expected 'name'")
 
-    if inspect.isclass(name):
+    if inspect.isclass(name) or inspect.isroutine(name):
         prepare_factory_context(name, "{}.{}".format(name.__module__, name.__name__))
         return name
 
@@ -37,7 +37,7 @@ def Component(name):
         raise ValueError("Invalid component name '{0}'".format(name))
 
     def component_decorator(clazz):
-        if not inspect.isclass(clazz):
+        if not inspect.isclass(clazz) and not inspect.isroutine(clazz):
             raise TypeError("Class exptected, got '{0}'".format(type(clazz).__name__))
         prepare_factory_context(clazz, name)
         return clazz
@@ -45,16 +45,7 @@ def Component(name):
     return component_decorator
 
 
-def Requires(*specifications):
-    def requires_decorator(clazz):
-        requires = classes_name(specifications)
-        get_factory_context(clazz).set_handler(HANDLER_REQUIRES, requires)
-        return clazz
-
-    return requires_decorator
-
-
-def Instantiate(name, properties=None):
+def instantiate(name, properties=None):
     if inspect.isclass(name):
         get_factory_context(name).add_instance(name.__name__)
         return name
@@ -78,7 +69,30 @@ def Instantiate(name, properties=None):
     return instantiate_decorator
 
 
-def Provides(specifications):
+def provides(specifications):
+    """
+    The ``@Provides`` decorator defines a service to expose
+
+    :Example:
+
+    .. code-block:: python
+
+        @Component()
+        @provides  # provide "Foo"
+        class Foo:
+            pass
+
+        @provides  # provide "IFoo"
+        class Foo(IFoo):
+            pass
+
+
+        @Component()
+        @provides("Foo")  # provide "Foo"
+        class Foo:
+            pass
+    """
+
     def provides_decorator(clazz):
         nonlocal specifications
         if not specifications:
@@ -88,21 +102,39 @@ def Provides(specifications):
         for spec in specs:
             if spec not in filtered_specs:
                 filtered_specs.append(spec)
-        config = get_factory_context(clazz)
-        config.set_handler(HANDLER_PROVIDES, filtered_specs)
+
+        get_factory_context(clazz).set_handler(HANDLER_PROVIDES, filtered_specs)
         return clazz
 
     return provides_decorator
 
 
-def Property(field, name, value=None):
+def requires(field, specifications, query = None):
+    if not field:
+        raise ValueError("Empty field name")
+    if not isinstance(field, str):
+        raise TypeError("Field name must be a string")
+
+    def requires_decorator(clazz):
+        specs = classes_name(specifications)
+        fields = get_factory_context(clazz).set_default_handler(HANDLER_REQUIRES, {})
+        fields[field] = (specs, query)
+
+        setattr(clazz, field, None)
+
+        return clazz
+
+    return requires_decorator
+
+
+def property(field, name, value=None):
     def propert_decorator(method):
         return method
 
     return propert_decorator
 
 
-def Bind(specification=None, spec_filter=None, reference=False):
+def bind(specification=None, spec_filter=None, reference=False):
     if inspect.isroutine(specification):
         setattr(specification, METHOD_CALLBACK, (CALLBACK_BIND, None))
         return specification
@@ -118,7 +150,7 @@ def Bind(specification=None, spec_filter=None, reference=False):
     return BindDecorator
 
 
-def Unbind(specification=None, spec_filter=None, reference=False):
+def unbind(specification=None, spec_filter=None, reference=False):
     if inspect.isroutine(specification):
         setattr(specification, METHOD_CALLBACK, (CALLBACK_UNBIND, None))
         return specification
@@ -134,7 +166,7 @@ def Unbind(specification=None, spec_filter=None, reference=False):
     return UnbindDecorator
 
 
-def Validate(*args):
+def validate(*args):
     if not len(args):
         raise TypeError("Missing args")
     if len(args) == 1:
@@ -149,7 +181,7 @@ def Validate(*args):
     return ValidateDecorator
 
 
-def Invalidate(*args):
+def invalidate(*args):
     if not len(args):
         raise TypeError("Missing args")
     if len(args) == 1:

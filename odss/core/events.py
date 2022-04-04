@@ -66,7 +66,7 @@ class FrameworkEvent(BundleEvent):
 
 class ServiceEvent:
 
-    """ Service has been registered """
+    """Service has been registered"""
 
     REGISTERED = 1
 
@@ -139,10 +139,10 @@ class Listeners:
 
     async def fire_event(self, event):
         tasks = [
-            (getattr(listener, self.listener_method), event)
+            self.runner.add_task(getattr(listener, self.listener_method), event)
             for listener in self.listeners[:]
         ]
-        await self.runner.collect_tasks(tasks)
+        await self.runner.wait_for_tasks(tasks)
 
 
 class ServiceListeners:
@@ -189,7 +189,7 @@ class ServiceListeners:
         self.by_interface.setdefault(interface, []).append(info)
         return True
 
-    async def fire_event(self, event):
+    def fire_event(self, event):
         properties = event.reference.get_properties()
         listeners = set()
         interfaces_with_none = tuple(properties[OBJECTCLASS]) + (None,)
@@ -211,8 +211,8 @@ class ServiceListeners:
                     event = ServiceEvent(
                         ServiceEvent.MODIFIED_ENDMATCH, event.reference, previous
                     )
-                    tasks.append((method, event))
-        await self.runner.collect_tasks(tasks)
+                    tasks.append(method, event)
+        self.runner.add_tasks(tasks)
 
 
 class EventDispatcher:
@@ -247,11 +247,11 @@ class EventDispatcher:
     def remove_service_listener(self, listener):
         return self.services.remove_listener(listener)
 
-    async def fire_framework_event(self, event):
-        await self.framework.fire_event(event)
+    def fire_framework_event(self, event):
+        return self.framework.fire_event(event)
 
-    async def fire_bundle_event(self, event):
-        await self.bundles.fire_event(event)
+    def fire_bundle_event(self, event):
+        return self.bundles.fire_event(event)
 
-    async def fire_service_event(self, event):
-        await self.services.fire_event(event)
+    def fire_service_event(self, event):
+        self.services.fire_event(event)

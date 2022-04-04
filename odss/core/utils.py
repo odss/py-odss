@@ -1,5 +1,5 @@
 import inspect
-
+from contextlib import contextmanager
 
 def class_name(specification):
     if not specification:
@@ -15,3 +15,18 @@ def classes_name(specifications):
     if not isinstance(specifications, (tuple, list)):
         specifications = [specifications]
     return tuple(class_name(specification) for specification in specifications)
+
+
+# @contextmanager
+# def use_serivce(ctx: IBundleContext, reference: ServiceReference):
+#     if reference is None:
+#         raise TypeError("Invalid reference")
+
+#     try:
+#         yield ctx.get_service(reference)
+#     finally:
+#         try:
+#             ctx.unget_service(reference)
+#         except BundleException:
+#             pass
+

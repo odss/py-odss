@@ -13,20 +13,21 @@ from .services import ConfigurationAdmin
 
 class Activator:
     async def start(self, ctx):
-        admin = ConfigurationAdmin()
+        self.admin = ConfigurationAdmin()
         self.trackers = [
-            StorageTracker(ctx, admin),
-            ManagedTracker(ctx, admin),
-            ManagedFactoryTracker(ctx, admin),
+            StorageTracker(ctx, self.admin),
+            ManagedTracker(ctx, self.admin),
+            ManagedFactoryTracker(ctx, self.admin),
         ]
         for tracker in self.trackers:
             await tracker.open()
 
-        await ctx.register_service(SERVICE_CONFIGURATION_ADMIN, self.admin)
+        ctx.register_service(SERVICE_CONFIGURATION_ADMIN, self.admin)
 
     async def stop(self, ctx):
         for tracker in self.trackers:
             await tracker.close()
+        self.admin = None
 
 
 class ManagedTracker(ServiceTracker):

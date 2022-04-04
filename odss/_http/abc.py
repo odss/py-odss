@@ -47,10 +47,18 @@ class IHttpContext(metaclass=abc.ABCMeta):
 _Handler = t.Callable[[IHttpRequest], t.Awaitable[t.Any]]
 _Middleware = t.Callable[[IHttpRequest, _Handler], t.Awaitable[t.Any]]
 
+# IHttpService = "odss.service.http"
+# IHttpRouteService = "odss.service.http.route"
+# IHttpMiddlewareService = "odss.service.http.middleware"
 
-class IHttpMiddlewareService:
+
+class IHttpService:
     pass
 
 
 class IHttpRouteService:
+    pass
+
+
+class IHttpMiddlewareService:
     pass

@@ -122,6 +122,21 @@ async def test_storage(mocker: MockerFixture):
     storage.data = {"service.pid": {SERVICE_PID: "service.pid", "bar": "foo"}}
     service_mock = mocker.AsyncMock()
 
+    await admin.add_storage(storage)
+
+    await admin.add_managed_service("service.pid", service_mock)
+
+    service_mock.updated.assert_called_once_with(
+        {SERVICE_PID: "service.pid", "bar": "foo"}
+    )
+
+
+async def test_storage_after_manage_service(mocker: MockerFixture):
+    admin = ConfigurationAdmin()
+    storage = MemoryStorage()
+    storage.data = {"service.pid": {SERVICE_PID: "service.pid", "bar": "foo"}}
+    service_mock = mocker.AsyncMock()
+
     await admin.add_managed_service("service.pid", service_mock)
 
     await admin.add_storage(storage)

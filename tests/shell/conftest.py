@@ -1,6 +1,6 @@
 import pytest
 
-from odss.shell.session import Session
+from odss.terminal.session import Session
 from odss.shell.shell import Shell
 
 

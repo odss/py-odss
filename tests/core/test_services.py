@@ -135,14 +135,14 @@ async def test_service_bundle_using(framework):
 @pytest.mark.asyncio
 async def test_unregister_service(framework):
     context = framework.get_context()
-    registration = await context.register_service("foo", "bar")
+    registration = context.register_service("foo", "bar")
 
     reference = context.get_service_reference("foo")
     assert reference is not None
     service = context.get_service(reference)
     assert service == "bar"
 
-    await registration.unregister()
+    registration.unregister()
 
     # unregister twice
     with pytest.raises(BundleException):

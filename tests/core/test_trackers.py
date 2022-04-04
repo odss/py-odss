@@ -1,3 +1,4 @@
+import asyncio
 import pytest
 
 from odss.core.trackers import ServiceTracker
@@ -29,6 +30,8 @@ async def test_simple_tracker(framework):
 
     await bundle.stop()
 
+    await asyncio.sleep(0.01)
+
     assert len(tracker.get_service_references()) == 0
 
     await tracker.close()
@@ -44,6 +47,8 @@ async def test_listener_tracker(framework):
     bundle = await context.install_bundle(TEXT_BUNDLE)
     await bundle.start()
 
+    await asyncio.sleep(0.01)
+
     assert len(tracker.get_service_references()) == 2
 
     assert len(tracker.events) == 2
@@ -51,6 +56,8 @@ async def test_listener_tracker(framework):
     assert tracker.events[1][0] == "on_adding_service"
 
     await bundle.stop()
+
+    await asyncio.sleep(0.01)
 
     assert len(tracker.events) == 4
     assert tracker.events[2][0] == "on_removed_service"

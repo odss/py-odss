@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import inspect
 import typing as t
 
 from odss.core.bundle import BundleContext
@@ -26,6 +27,7 @@ class ComponentManager(IComponentManager):
         self._context = context
         self._handlers = handlers
         self._requirements = None
+        self._instance = None
 
     @property
     def context(self):
@@ -44,13 +46,15 @@ class ComponentManager(IComponentManager):
         await self.check_lifecycle()
 
     async def stop(self):
-        await self.invalidate()
+        # if self._state != ComponentManager.INVALID:
+        #     await self.invalidate()
         await self.__handlers_callback("stop")
         self._state = ComponentManager.STOPED
 
     async def invoke(self, method, service, reference):
-        async_handler_callback = asyncio.coroutine(method)
-        await async_handler_callback(self, service)
+        result = method(self, service)
+        if asyncio.iscoroutine(result):
+            await result
 
     def set_requirements(self, requirements):
         if self._requirements is not None:
@@ -60,20 +64,29 @@ class ComponentManager(IComponentManager):
     def reset_requirements(self):
         self._requirements = None
 
+    def bind(self, field: str, dependency):
+        if self._instance:
+            setattr(self._instance, field, dependency)
+
     async def check_lifecycle(self):
         was_valid = self._state == ComponentManager.VALID
-
         is_valid = await self.__handlers_callback("is_valid", break_on_false=True)
         if was_valid and not is_valid:
             await self.invalidate()
-        elif is_valid:
+        elif not was_valid and is_valid:
             await self.validate()
 
     async def validate(self):
+        args = self._requirements if self._requirements is not None else []
+        if inspect.isclass(self._context.factory_target):
+            self._instance = self._context.factory_target(*args)
+        elif inspect.isroutine(self._context.factory_target):
+            self._instance = self._context.factory_target
+        else:
+            raise ValueError('Expected method or class')
+
         await self.__handlers_callback("pre_validate")
 
-        args = self._requirements if self._requirements is not None else []
-        self._instance = self._context.factory_class(*args)
         await self.__validation_callback(CALLBACK_VALIDATE)
         self._state = ComponentManager.VALID
 
@@ -88,7 +101,7 @@ class ComponentManager(IComponentManager):
 
     async def __handlers_callback(self, method_name, *args, **kwargs):
         break_on_false = kwargs.pop("break_on_false", False)
-        result = True
+        has_result = True
         for handler in self._handlers:
             try:
                 handler_callback = getattr(handler, method_name)
@@ -96,25 +109,33 @@ class ComponentManager(IComponentManager):
                 pass
             else:
                 try:
-                    async_handler_callback = asyncio.coroutine(handler_callback)
-                    res = await async_handler_callback(*args, **kwargs)
-                    if res is not None and not res:
-                        result = False
+                    result = handler_callback(*args, **kwargs)
+                    if asyncio.iscoroutine(result):
+                        result = await result
+
+                    if result is not None and not result:
+                        has_result = False
                         if break_on_false:
                             break
                 except Exception as ex:
                     # Log errors
                     logger.exception("Error calling handler '%s': %s", handler, ex)
 
-        return result
+        return has_result
 
     async def __validation_callback(self, kind: str):
+        """
+        Run @Validate/@Invalidate methods
+        """
+
         callback, args = self._context.get_callback(kind)
         if not callback:
             return True
+
         try:
-            async_callback = asyncio.coroutine(callback)
-            await async_callback(self._instance, self._context.get_bundle_context())
+            result = callback(self._instance, self._context.get_bundle_context())
+            if asyncio.iscoroutine(result):
+                await result
         except Exception as ex:
             logger.exception(
                 "Error calling @Validate/@Invalidate method '%s': %s", kind, ex

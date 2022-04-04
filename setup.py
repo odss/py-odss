@@ -5,5 +5,9 @@ setup(
     packages=find_packages(),
     version="0.1",
     description="",
-    packages=["odss"],
+    entry_points={
+        'console_scripts': [
+            'odss = odss.cli.__main__:main'
+        ],
+    }
 )

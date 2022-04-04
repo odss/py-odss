@@ -5,22 +5,24 @@ import typing as t
 
 from odss.core.trackers import ServiceTracker
 from odss.core.bundle import IBundleContext
-from odss.http.abc import IHttpServer
+
+from odss.http.abc import (
+    IHttpServer,
+    IHttpRouteService,
+    IHttpMiddlewareService,
+)
 from odss.http.consts import (
     ODSS_HTTP_ROUTE_HANDLER,
-    SERVICE_HTTP_ROUTE,
-    SERVICE_HTTP_MIDDLEWARE,
 )
 
 logger = logging.getLogger(__name__)
-
 
 HandlerInfo = t.Tuple[t.Callable, t.Dict[str, t.Any]]
 
 
 class RouteTracker(ServiceTracker):
     def __init__(self, ctx: IBundleContext, server: IHttpServer):
-        super().__init__(self, ctx, SERVICE_HTTP_ROUTE)
+        super().__init__(self, ctx, IHttpRouteService)
         self.server = server
         self.handlers = {}
 
@@ -33,38 +35,32 @@ class RouteTracker(ServiceTracker):
     def on_removed_service(self, reference, service):
         self.unbind_handler(service)
 
-    def bind_handler(self, handler: t.Any):
-        """
-        Bind handler
-        """
-        if handler in self.handlers:
-            logger.warning("Handler already register: %s", handler)
+    def bind_handler(self, view: t.Any):
+        if view in self.handlers:
+            logger.warning("Handler already register: %s", view)
             return False
 
         routes = []
-        for handler, attrs in self._extract_handlers(handler):
+        for _handler, attrs in self._extract_handlers(view):
             name = attrs.pop("name")
             path = attrs.pop("path")
             methods = attrs.pop("methods")
-            unregister = self.server.register_route(methods, path, name, handler)
+            unregister = self.server.register_route(methods, path, name, _handler)
             routes.append(unregister)
 
-        self.handlers[handler] = routes
+        self.handlers[view] = routes
         return True
 
-    def unbind_handler(self, handler: t.Any):
-        """
-        Unbind handler
-        """
-        if handler not in self.handlers:
-            logger.warning("Handler not found: %s", handler)
+    def unbind_handler(self, view: t.Any):
+        if view not in self.handlers:
+            logger.warning("Handler not found: %s", view)
             return False
 
-        unregisters = self.handlers[handler]
+        unregisters = self.handlers[view]
         for unregister in unregisters:
             unregister()
 
-        del self.handlers[handler]
+        del self.handlers[view]
 
         return True
 
@@ -83,12 +79,12 @@ class RouteTracker(ServiceTracker):
 
 class MiddlewareTracker(ServiceTracker):
     def __init__(self, ctx: IBundleContext, server: IHttpServer):
-        super().__init__(self, ctx, SERVICE_HTTP_MIDDLEWARE)
+        super().__init__(self, ctx, IHttpMiddlewareService)
         self.server = server
         self.subs = {}
 
     def on_adding_service(self, reference, service):
-        self.subs[service] = self.server.add_middleware(
+        self.subs[reference] = self.server.add_middleware(
             service, reference.get_sort_value()
         )
 
@@ -96,9 +92,9 @@ class MiddlewareTracker(ServiceTracker):
         pass
 
     def on_removed_service(self, reference, service):
-        if self.subs[service]:
-            self.subs[service]()
-            del self.subs[service]
+        if self.subs[reference]:
+            self.subs[reference]()
+            del self.subs[reference]
 
 
 class Middlewares:

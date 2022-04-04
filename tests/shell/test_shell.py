@@ -3,9 +3,6 @@ import pytest
 from odss.shell.decorators import command
 from odss.shell.shell import Shell
 
-pytestmark = pytest.mark.asyncio
-
-
 def command_handler():
     pass
 
@@ -40,28 +37,29 @@ def test_unregister_command(shell):
     assert not shell.unregister_command("test"), "Not unregister command"
     assert shell.unregister_command("test", "ns"), "Not unregister command"
 
-
+@pytest.mark.asyncio
 async def test_execute_incorrect_commands(shell, shell_session):
     with shell_session:
-        assert not await shell.execute(shell_session, "test'")
+        assert not await shell.execute("test'", shell_session)
         assert shell_session.output == "Error reading line: No closing quotation\n"
 
     with shell_session:
-        assert not await shell.execute(shell_session, "test")
+        assert not await shell.execute("test", shell_session)
         assert "Unknown command: test" in shell_session.output
 
     with shell_session:
-        assert not await shell.execute(shell_session, "ns.test")
+        assert not await shell.execute("ns.test", shell_session)
         assert "Unknown command: ns.test" in shell_session.output
 
 
+@pytest.mark.asyncio
 async def test_execute_commands(shell, shell_session):
     def command_handler(session, *args, **kwargs):
         session.write_line("run")
 
     shell.register_command("test", command_handler)
 
-    assert await shell.execute(shell_session, "test")
+    assert await shell.execute("test", shell_session)
     assert shell_session.output == "run\n"
 
 

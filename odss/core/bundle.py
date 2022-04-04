@@ -1,90 +1,18 @@
-import typing as t
-
 from .events import ServiceEvent
-
-
-class IBundle:
-
-    UNINSTALLED = 1
-    INSTALLED = 2
-    RESOLVED = 4
-    STARTING = 8
-    STOPPING = 16
-    ACTIVE = 32
-
-    @property
-    def id(self) -> str:
-        pass
-
-    @property
-    def state(self) -> int:
-        pass
-
-    @property
-    def name(self) -> str:
-        pass
-
-    def get_module(self) -> object:
-        pass
-
-    async def start(self) -> None:
-        pass
-
-    async def stop(self) -> None:
-        pass
-
-
-class IBundleContext:
-    def get_bundle(self, bundle_id: int = None) -> IBundle:
-        pass
-
-    def get_bundles(self) -> t.Iterable[IBundle]:
-        pass
-
-    def get_property(self, name: str) -> str:
-        pass
-
-    def get_service(self, reference) -> t.Any:
-        pass
-
-    def unget_service(self, reference) -> None:
-        pass
-
-    def get_service_reference(self, clazz, filter=None):
-        pass
-
-    def get_service_references(self, clazz, filter=None):
-        pass
-
-    async def install_bundle(self, name, path=None):
-        pass
-
-    async def register_service(self, clazz, service, properties=None):
-        pass
-
-    def add_framework_listener(self, listener):
-        pass
-
-    def add_bundle_listener(self, listener):
-        pass
-
-    def add_service_listener(self, listener, interface=None, filter=None):
-        pass
-
-    def remove_framework_listener(self, listener):
-        pass
-
-    def remove_bundle_listener(self, listener):
-        pass
-
-    def remove_service_listener(self, listener):
-        pass
-
-    async def __fire_service_event(self, kind, reference):
-        pass
+from .types import IBundle, IBundleContext
 
 
 class Bundle(IBundle):
+
+    __slots__ = [
+        "__framework",
+        "__id",
+        "__name",
+        "__integration",
+        "__state",
+        "__context",
+    ]
+
     def __init__(self, framework, bundle_id, name, integration):
         self.__framework = framework
         self.__id = bundle_id
@@ -95,51 +23,75 @@ class Bundle(IBundle):
 
     @property
     def id(self):
+        """
+        Return the bundle ID
+        """
         return self.__id
 
     @property
     def state(self):
+        """
+        Return bundle state
+        """
         return self.__state
 
     @property
     def name(self):
+        """
+        Return bundle name
+        """
         return self.__name
 
     @property
     def version(self):
-        return "0.0.0"
+        """
+        Return bundle version"
+        """
+        return getattr(self.__integration.module, "__version__", "0.0.0")
 
     def get_location(self):
+        """
+        Return bundle location
+        """
         return getattr(self.__integration.module, "__file__", "")
 
     def get_module(self):
+        """
+        Return bundle python module
+        """
         return self.__integration.module
 
     async def start(self):
+        """
+        Start bundle
+        """
         await self.__framework.start_bundle(self)
 
     async def stop(self):
+        """
+        Stop bundle
+        """
         await self.__framework.stop_bundle(self)
 
-    async def uninstall(self):
+    async def uninstall(self) -> None:
         await self.__framework.uninstall_bundle(self)
 
-    def set_context(self, context):
+    def set_context(self, context: IBundleContext) -> None:
         self.__context = context
 
-    def get_context(self):
+    def get_context(self) -> IBundleContext:
         return self.__context
 
     def remove_context(self):
         self.__context = None
 
-    def __str__(self):
+    def __str__(self) -> str:
         """
         String representation
         """
         return "Bundle(id={0}, name={1})".format(self.__id, self.__name)
 
-    def _set_state(self, state):
+    def _set_state(self, state) -> None:
         self.__state = state
 
     def get_references(self):
@@ -149,7 +101,7 @@ class Bundle(IBundle):
         return self.__framework.get_bundle_using_services(self)
 
 
-class BundleContext:
+class BundleContext(IBundleContext):
     def __init__(self, framework, bundle, events):
         self.__framework = framework
         self.__bundle = bundle
@@ -161,10 +113,12 @@ class BundleContext:
     def get_framework(self):
         return self.__framework
 
-    def get_bundle(self, bundle_id=None) -> Bundle:
+    def get_bundle(self, bundle_id: int = None) -> IBundle:
+        if bundle_id is None:
+            return self.__bundle
         return self.__framework.get_bundle_by_id(bundle_id)
 
-    def get_bundles(self):
+    def get_bundles(self) -> IBundle:
         return self.__framework.get_bundles()
 
     def get_property(self, name: str):
@@ -174,6 +128,9 @@ class BundleContext:
         return self.__framework.get_service(self.__bundle, reference)
 
     def unget_service(self, reference):
+        """
+        Disables a reference to the service
+        """
         return self.__framework.unget_service(self.__bundle, reference)
 
     def get_service_reference(self, clazz=None, filter=None):
@@ -191,8 +148,8 @@ class BundleContext:
     async def install_bundle(self, name, path=None):
         return await self.__framework.install_bundle(name, path)
 
-    async def register_service(self, clazz, service, properties=None):
-        return await self.__framework.register_service(
+    def register_service(self, clazz, service, properties=None):
+        return self.__framework.register_service(
             self.__bundle, clazz, service, properties
         )
 

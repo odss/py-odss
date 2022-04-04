@@ -5,7 +5,7 @@ from tests.cdi.interfaces import IListener, IManager, IService, IStorage
 
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("cdi")
-async def test_priovides_services(framework):
+async def test_privides_services(framework):
     bundle = await framework.install_bundle("tests.cdi.components")
     module = bundle.get_module()
 

@@ -3,20 +3,20 @@ import pytest
 from odss.cdi import consts
 from odss.cdi.contexts import get_factory_context
 from odss.cdi.decorators import (
-    Component,
-    Instantiate,
-    Invalidate,
-    Provides,
-    Requires,
-    Validate,
+    component,
+    instantiate,
+    invalidate,
+    provides,
+    requires,
+    validate,
 )
 
 
 def test_component():
     with pytest.raises(TypeError):
-        Component()
+        component()
 
-    @Component
+    @component
     class Dummy1:
         pass
 
@@ -24,7 +24,7 @@ def test_component():
     assert config.name == "tests.cdi.test_decorators.Dummy1"
     assert config.completed
 
-    @Component("dummy2")
+    @component("dummy2")
     class Dummy2:
         pass
 
@@ -32,7 +32,7 @@ def test_component():
     assert config.name == "dummy2"
     assert config.completed
 
-    @Component("dummy3")
+    @component("dummy3")
     class Dummy3:
         def __init__(self, d1: Dummy1, d2: Dummy2):
             pass
@@ -40,47 +40,47 @@ def test_component():
     config = get_factory_context(Dummy3)
     assert config.name == "dummy3"
     assert config.completed
-    requires = config.get_handler(consts.HANDLER_REQUIRES)
+    requires = config.get_handler(consts.HANDLER_CONSTRUCTOR_REQUIRES)
     assert len(requires) == 2
 
 
 def test_instantiate():
 
     with pytest.raises(TypeError):
-        Instantiate()
+        instantiate()
 
     for invalid_name in (None, True, False, 1, [1, 2], (1, 2)):
         with pytest.raises(TypeError):
-            Instantiate(invalid_name)()
+            instantiate(invalid_name)()
 
     for invalid_props in (None, True, False, 1, [1, 2], (1, 2)):
         with pytest.raises(TypeError):
-            Instantiate("name", invalid_props)()
+            instantiate("name", invalid_props)()
 
     with pytest.raises(NameError):
-        Instantiate(Dummy1)
+        instantiate(Dummy1)
 
-    @Instantiate
+    @instantiate
     class Dummy1:
         pass
 
     instances = get_factory_context(Dummy1).get_instances()
     assert len(instances) == 1
-    assert instances[Dummy1.__name__] == {}
+    assert instances == ((Dummy1.__name__, {}), )
 
-    @Instantiate("dummy")
-    @Instantiate("new-dummy", {"id": 1})
+    @instantiate("dummy")
+    @instantiate("new-dummy", {"id": 1})
     class Dummy2:
         pass
 
     instances = get_factory_context(Dummy2).get_instances()
     assert len(instances) == 2
-    assert instances["dummy"] == {}
-    assert instances["new-dummy"] == {"id": 1}
+    assert instances[0] == ("new-dummy", {"id": 1})
+    assert instances[1] == ("dummy", {})
 
 
 def test_provide():
-    @Provides("test1")
+    @provides("test1")
     class Dummy1:
         pass
 
@@ -88,7 +88,7 @@ def test_provide():
     assert len(specs) == 1
     assert specs[0] == "test1"
 
-    @Provides(["test1", "test2"])
+    @provides(["test1", "test2"])
     class Dummy2:
         pass
 
@@ -99,22 +99,36 @@ def test_provide():
 
 
 def test_requires():
-    @Requires("test1")
+    @requires("_field1", "test1")
     class Dummy1:
+        _field1: str
         pass
 
-    specs = get_factory_context(Dummy1).get_handler(consts.HANDLER_REQUIRES)
-    assert len(specs) == 1
-    assert specs[0] == "test1"
+    requirements = get_factory_context(Dummy1).get_handler(consts.HANDLER_REQUIRES)
+    assert len(requirements) == 1
+    assert requirements["_field1"] == (("test1",), None)
 
-    @Requires("test1", "test2")
+    @requires("_field1", "test1")
+    @requires("_field2", "test2")
     class Dummy2:
+        _field2: str
         pass
 
-    specs = get_factory_context(Dummy2).get_handler(consts.HANDLER_REQUIRES)
-    assert len(specs) == 2
-    assert specs[0] == "test1"
-    assert specs[1] == "test2"
+    requirements = get_factory_context(Dummy2).get_handler(consts.HANDLER_REQUIRES)
+    assert len(requirements) == 2
+    assert requirements["_field1"] == (("test1", ), None)
+    assert requirements["_field2"] == (("test2", ), None)
+
+
+    @component
+    class Dummy3:
+        def __init__(self, test: 'Test3'):
+            pass
+
+    requirements = get_factory_context(Dummy3).get_handler(consts.HANDLER_CONSTRUCTOR_REQUIRES)
+    assert len(requirements) == 1
+    assert requirements == ("Test3", )
+
 
 
 def test_default_requires():
@@ -124,12 +138,12 @@ def test_default_requires():
     class IService2:
         pass
 
-    @Component("test1")
+    @component("test1")
     class Dummy1:
         def __init__(self, s1: IService1, s2: IService2):
             pass
 
-    specs = get_factory_context(Dummy1).get_handler(consts.HANDLER_REQUIRES)
+    specs = get_factory_context(Dummy1).get_handler(consts.HANDLER_CONSTRUCTOR_REQUIRES)
     assert len(specs) == 2
     assert isinstance(specs[0], str)
     assert isinstance(specs[1], str)
@@ -138,13 +152,13 @@ def test_default_requires():
 
 
 def test_validate():
-    @Component
+    @component
     class Dummy:
-        @Validate
+        @validate
         def validate(self, ctx):
             pass
 
-        @Invalidate
+        @invalidate
         def invalidate(self, ctx):
             pass
 

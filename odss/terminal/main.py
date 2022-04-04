@@ -1,7 +1,8 @@
 import asyncio
 
-from ..core.trackers import ServiceTracker
-from .consts import SERVICE_SHELL  # , SERVICE_SHELL_COMMAND
+from odss.core.trackers import ServiceTracker
+from odss.shell.consts import SERVICE_SHELL  # , SERVICE_SHELL_COMMAND
+
 from .session import Session
 
 
@@ -51,4 +52,4 @@ class InteractiveConsole(ServiceTracker):
         while self.shell:
             line = await self.session.readline()
             if self.shell:
-                await self.shell.execute(self.session, line)
+                await self.shell.execute(line, self.session)

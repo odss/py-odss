@@ -15,6 +15,7 @@ class HttpContext(IHttpContext):
         self._request = request
         self.state = {}
 
+    @property
     def request(self):
         return self._request
 

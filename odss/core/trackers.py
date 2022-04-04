@@ -36,12 +36,12 @@ class ServiceTracker:
         self._tracked = _ServiceTracked(context, listener)
 
     async def open(self):
-        logger.info(f"Start tracking service: {self._interface} query={self._query}")
+        logger.debug(f"Start tracking service: {self._interface} query={self._query}")
         self._context.add_service_listener(self._tracked, self._interface, self._query)
         await self._tracked.track_initial(self._get_initial_references())
 
     async def close(self):
-        logger.info(f"Stop tracking service: {self._interface} query={self._query}")
+        logger.debug(f"Stop tracking service: {self._interface} query={self._query}")
         self._context.remove_service_listener(self._tracked)
         for reference in self.get_service_references():
             await self._tracked.untrack(reference)
@@ -140,6 +140,3 @@ class _ServiceTracked:
         self.tracked = collections.OrderedDict(
             [(ref, self.tracked[ref]) for ref in refs]
         )
-        # for ref in refs:
-        #     tracked[ref] = self.tracked[ref]
-        # self.tracked = tracked

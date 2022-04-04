@@ -9,10 +9,10 @@ async def test_priovides_services(framework):
     bundle = await framework.install_bundle("tests.cdi.components")
     await bundle.start()
 
-    refs = framework.find_service_references(IManager)
+    refs = framework.find_service_references(IStorage)
     assert len(refs) == 1
 
-    refs = framework.find_service_references(IStorage)
+    refs = framework.find_service_references(IService)
     assert len(refs) == 1
 
     refs = framework.find_service_references(IListener)

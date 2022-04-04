@@ -52,20 +52,17 @@ async def test_remove_configuration_by_directory(
 async def test_update_configuration(
     config_storage: MemoryStorage, config_directory: ConfigurationDirectory
 ):
-
     configuration = await config_directory.add(
-        "foo.bar", {"foo": "bar"}, config_storage
+        "foo.bar", {"bar": "foo"}, config_storage
     )
 
-    assert await configuration.update({"foo": "bar"}) is False
-
-    assert await configuration.update({"bar": "foo"}) is True
+    await configuration.update({"foo": "bar"})
 
     assert config_storage.data == {
         "foo.bar": {SERVICE_PID: "foo.bar", "foo": "bar", "bar": "foo"}
     }
 
-    assert await configuration.update({"bar": "foo"}, replace=True) is True
+    await configuration.update({"bar": "foo"}, replace=True)
 
     assert config_storage.data == {"foo.bar": {SERVICE_PID: "foo.bar", "bar": "foo"}}
 

@@ -5,9 +5,15 @@ import typing as t
 
 from aiohttp import web
 
-from ..abc import IHttpServer
-from ..base import Middlewares, MiddlewareTracker, RouteTracker
+from odss.http import IHttpServer, IHttpContext
+from odss.http.base import Middlewares, MiddlewareTracker, RouteTracker
+
 from .context import HttpContext
+
+
+__version_info__ = (1, 0, 0)
+__version__ = ".".join(str(x) for x in __version_info__)
+
 
 logger = logging.getLogger(__name__)
 
@@ -22,14 +28,12 @@ class Activator:
         await self.server.open()
         await self.rtracker.open()
         await self.mtracker.open()
-        self.reg = await ctx.register_service(
-            IHttpServer, self.server, {"type": "http"}
-        )
+        self.reg = ctx.register_service(IHttpServer, self.server, {"type": "http"})
 
     async def stop(self, ctx):
         logger.info("Stop http server")
-        await self.reg.unregister()
-        await self.mtracker.open()
+        self.reg.unregister()
+        await self.mtracker.close()
         await self.rtracker.close()
         await self.server.close()
 
@@ -43,9 +47,10 @@ class ServerMiddlewares(Middlewares):
 
     @web.middleware
     async def handle_middleware(self, request, handler):
+        ctx = HttpContext(request)
         for mid, p in self.middlewares[::-1]:
             handler = functools.partial(mid, handler=handler)
-        return await handler(request)
+        return await handler(ctx)
 
 
 class HttpServer(IHttpServer):
@@ -58,7 +63,7 @@ class HttpServer(IHttpServer):
 
     async def open(self):
         self.app = web.Application(middlewares=[])
-        self.app._router.freeze = lambda: None  # freeze
+        self.app._router.freeze = lambda: None  # remove freeze
         self.app._middlewares = self._middlewares
 
         self.runner = web.AppRunner(self.app)
@@ -88,7 +93,7 @@ class HttpServer(IHttpServer):
         route = self.app.router.add_route(methods, path, handler, name=name)
 
         def unregister_route():
-            logger.info("Removve route: %s %s (name=%s)", methods, path, name)
+            logger.info("Remove route: %s %s (name=%s)", methods, path, name)
             resource = route.resource
             resource._routes.remove(route)
             if not resource._routes and self.app:
@@ -106,10 +111,9 @@ class HttpServer(IHttpServer):
 def request_handler_factory(handler: t.Callable) -> t.Callable:
     """Wrap handler."""
 
-    async def handle(request: web.Request) -> web.StreamResponse:
+    async def handle(ctx: IHttpContext) -> web.StreamResponse:
         """Handle incoming request."""
-
-        result = handler(HttpContext(request), **request.match_info)
+        result = handler(ctx, **ctx.request.match_info)
         if asyncio.iscoroutine(result):
             result = await result
 

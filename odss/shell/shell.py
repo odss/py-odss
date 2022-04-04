@@ -10,10 +10,11 @@ import typing as t
 
 from .consts import DEFAULT_NAMESPACE, ODSS_SHELL_COMMAND_HANDLER
 from .decorators import command
-from .session import Session
 
 logger = logging.getLogger(__name__)
 
+class OutputStream:
+    pass
 
 class Shell:
     def __init__(self, ctx, bind_basic=False):
@@ -25,7 +26,7 @@ class Shell:
             self.bind_handler(self)
 
     @command("help", alias="?")
-    def print_help(self, session: Session, name: str = None) -> None:
+    def print_help(self, session: OutputStream, name: str = None) -> None:
         """
         Prints info about all available commands.
         """
@@ -43,7 +44,7 @@ class Shell:
             for namespace in namespaces:
                 self._print_namespace_help(session, namespace)
 
-    def _print_command_help(self, session: Session, namespace: str, name: str):
+    def _print_command_help(self, session: OutputStream, namespace: str, name: str):
         command = self._commands[namespace][name]
         args, doc = _get_command_info(command)
         sargs = ", ".join(args[1:])
@@ -55,14 +56,14 @@ class Shell:
             self._print_command_help(session, namespace, name)
 
     @command(alias="exit")
-    async def quit(self, session: Session):
+    async def quit(self, session: OutputStream):
         """
         Stops the shell session
         """
 
         def shutdown():
             framework = self.ctx.get_framework()
-            framework.create_task(framework.stop)
+            framework.add_task(framework.stop)
 
         session.write_line("Bye...")
         asyncio.get_event_loop().call_soon(shutdown)
@@ -179,36 +180,35 @@ class Shell:
                     commands.append(f"{namespace}.{name}")
         return sorted(commands)
 
-    async def execute(self, session: Session, cmdline: str):
+    async def execute(self, cmdline: str, output: OutputStream):
         try:
             line_parts = shlex.split(cmdline, True, True)
         except ValueError as ex:
-            session.write_line(f"Error reading line: {ex}")
+            output.write_line(f"Error reading line: {ex}")
             return False
 
         if not line_parts:
             return False
 
         args, kwargs = _build_params(line_parts[1:])
-
         try:
             namespace, name = self._parse_command_name(line_parts[0])
             command_handler = self._commands[namespace][name]
-            result = command_handler(session, *args, **kwargs)
-
+            result = command_handler(output, *args, **kwargs)
             if asyncio.iscoroutine(result):
                 result = await result
             if result:
                 if not isinstance(result, str):
                     result = "\n".join(list(result))
-                session.write_line(result)
+                output.write_line(result)
 
             return True
-        except Exception:
+        except Exception as ex:
+            print(ex)
             # error_msg = "{0} - {1}".format(type(ex).__name__, str(ex))
             # session.write_line(error_msg)
             trace = _format_exception(sys.exc_info())
-            session.write_line(trace)
+            output.write_line(trace)
 
         return False
 

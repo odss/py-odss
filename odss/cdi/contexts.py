@@ -76,10 +76,9 @@ def prepare_factory_context(clazz, name):
     factory_context = get_factory_context(clazz)
     if not factory_context.completed:
         factory_context.name = name
-        if not factory_context.has_handler(consts.HANDLER_REQUIRES):
-            requires = tuple(_get_init_spec(clazz))
-            if len(requires):
-                factory_context.set_handler(consts.HANDLER_REQUIRES, requires)
+        requires = tuple(_get_init_spec(clazz))
+        if requires:
+            factory_context.set_handler(consts.HANDLER_CONSTRUCTOR_REQUIRES, requires)
         _setup_callbacks(factory_context, clazz)
         factory_context.completed = True
     else:
@@ -116,14 +115,21 @@ class FactoryContext:
 
     def get_instances(self) -> t.Dict:
         if self.__instances:
-            return copy.deepcopy(self.__instances)
-        return {self.name: {}}
+            return tuple(self.__instances.items())
+        return ((self.name, {}), )
 
     def has_handler(self, name: str) -> bool:
         return name in self.__handlers
 
     def set_handler(self, name: str, args: any) -> None:
+        if name in self.__handlers:
+            raise ValueError(f"Handler {name} already register")
         self.__handlers[name] = args
+
+    def set_default_handler(self, name: str, args: any) -> any:
+        if name not in self.__handlers:
+            self.__handlers[name] = args
+        return self.__handlers[name]
 
     def append_handler(self, name, args: any) -> None:
         if name not in self.__handlers:
@@ -150,12 +156,12 @@ class ComponentContext:
     def __init__(
         self,
         name: str,
-        factory_class: t.Callable,
+        factory_target: t.Callable,
         factory_context: FactoryContext,
         properties: dict,
     ) -> None:
         self.name = name
-        self.factory_class = factory_class
+        self.factory_target = factory_target
         self.factory_context = factory_context
         self.properties = properties
 
@@ -169,13 +175,13 @@ class ComponentContext:
         return self.factory_context.get_callback(kind)
 
 
-def is_component_factory(clazz: TClass) -> bool:
-    return hasattr(clazz, consts.ODSS_FACTORY_CONTEXT)
+def has_factory_context(target: TClass) -> bool:
+    return hasattr(target, consts.ODSS_FACTORY_CONTEXT)
 
 
-def get_factory_context(clazz: TClass) -> FactoryContext:
-    factory_context: FactoryContext = getattr(clazz, consts.ODSS_FACTORY_CONTEXT, None)
+def get_factory_context(target: TClass) -> FactoryContext:
+    factory_context: FactoryContext = getattr(target, consts.ODSS_FACTORY_CONTEXT, None)
     if factory_context is None:
         factory_context = FactoryContext()
-        setattr(clazz, consts.ODSS_FACTORY_CONTEXT, factory_context)
+        setattr(target, consts.ODSS_FACTORY_CONTEXT, factory_context)
     return factory_context
