@@ -109,7 +109,7 @@ def provides(specifications):
     return provides_decorator
 
 
-def requires(field, specifications, query = None):
+def requires(field, specifications, query=None):
     if not field:
         raise ValueError("Empty field name")
     if not isinstance(field, str):

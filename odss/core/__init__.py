@@ -1,6 +1,6 @@
 from .framework import Framework
 from .loop import Callback  # noqa.
-
+from .consts import SERVICE_ID, OBJECTCLASS, SERVICE_BUNDLE_ID, SERVICE_PRIORITY
 from .types import IBundle, IBundleContext
 
 

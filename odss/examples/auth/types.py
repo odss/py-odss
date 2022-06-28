@@ -51,19 +51,16 @@ class AuthRequestContext(IAuthRequestContext):
     def forget(self) -> None:
         pass
 
-    def finalize(
-            self,
-            request: IAuthRequest,
-            response: IAuthResponse
-    ) -> None:
+    def finalize(self, request: IAuthRequest, response: IAuthResponse) -> None:
         pass
+
 
 class NullAction(IAction):
     def dispatch(
-            self,
-            policy: IAuthenticationPolicy,
-            request: IAuthRequest,
-            response: IAuthResponse
+        self,
+        policy: IAuthenticationPolicy,
+        request: IAuthRequest,
+        response: IAuthResponse,
     ) -> None:
         pass
 
@@ -76,17 +73,14 @@ class BaseAuthenticationPolicy(IAuthenticationPolicy):
         pass
 
     def remember(
-            self,
-            request: IAuthRequest,
-            response: IAuthResponse,
-            identity: str
+        self, request: IAuthRequest, response: IAuthResponse, identity: str
     ) -> None:
         pass
 
     def forget(
-            self,
-            request: IAuthRequest,
-            response: IAuthResponse,
+        self,
+        request: IAuthRequest,
+        response: IAuthResponse,
     ) -> None:
         pass
 
@@ -95,17 +89,10 @@ class Auth(IAuth):
     def __init__(self) -> None:
         self.auth_policy = AuthenticationStackPolicy()
 
-    def add_auth_policy(
-            self,
-            name: str,
-            policy: IAuthenticationPolicy
-    ) -> None:
+    def add_auth_policy(self, name: str, policy: IAuthenticationPolicy) -> None:
         self.auth_policy.add_policy(name, policy)
 
-    def current_user(
-            self,
-            request: IAuthRequest
-    ) -> IUserInfo:
+    def current_user(self, request: IAuthRequest) -> IUserInfo:
         identity = self.auth_policy.authenticate(request)
         if identity:
             return UserInfo(identity)
@@ -117,7 +104,9 @@ class Auth(IAuth):
 
 class AuthenticationStackPolicy(IAuthenticationPolicy):
     def __init__(self) -> None:
-        self._policies: typing.Dict[str, IAuthenticationPolicy] = collections.OrderedDict()
+        self._policies: typing.Dict[
+            str, IAuthenticationPolicy
+        ] = collections.OrderedDict()
 
     def add_policy(self, name: str, policy: IAuthenticationPolicy) -> None:
         self._policies[name] = policy
@@ -127,21 +116,18 @@ class AuthenticationStackPolicy(IAuthenticationPolicy):
             identity = policy.authenticate(request)
             if identity:
                 return identity
-        return ''
+        return ""
 
     def remember(
-            self,
-            request: IAuthRequest,
-            response: IAuthResponse,
-            identity: str
+        self, request: IAuthRequest, response: IAuthResponse, identity: str
     ) -> None:
         for policy in self._policies.values():
             policy.remember(request, response, identity)
 
     def forget(
-            self,
-            request: IAuthRequest,
-            response: IAuthResponse,
+        self,
+        request: IAuthRequest,
+        response: IAuthResponse,
     ) -> None:
         for policy in self._policies.values():
             policy.forget(request, response)
@@ -152,37 +138,29 @@ class CookieStorage(ICookieStorage):
         self.settings = settings
 
     def load(self, request: IAuthRequest) -> typing.Optional[str]:
-        return request.cookies.get(self.settings['name'])
+        return request.cookies.get(self.settings["name"])
 
     def create_token(self) -> str:
-        return secrets.token_urlsafe(self.settings['size'])
+        return secrets.token_urlsafe(self.settings["size"])
 
-    def save(
-            self,
-            request: IAuthRequest,
-            response: IAuthResponse,
-            sid: str
-    ) -> None:
+    def save(self, request: IAuthRequest, response: IAuthResponse, sid: str) -> None:
         response.set_cookie(
-            key=self.settings['name'],
+            key=self.settings["name"],
             value=sid,
-            max_age=self.settings['max_age'],
-            httponly=self.settings['http_only'],
-            secure=self.settings['secure'],
-            path=self.settings['path'],
-            domain=self.settings['domain'],
-            samesite=self.settings['samesite'],
+            max_age=self.settings["max_age"],
+            httponly=self.settings["http_only"],
+            secure=self.settings["secure"],
+            path=self.settings["path"],
+            domain=self.settings["domain"],
+            samesite=self.settings["samesite"],
         )
 
     def remove(
-            self,
-            request: IAuthRequest,
-            response: IAuthResponse,
+        self,
+        request: IAuthRequest,
+        response: IAuthResponse,
     ) -> None:
-        response.set_cookie(
-            self.settings['name'],
-            max_age=0
-        )
+        response.set_cookie(self.settings["name"], max_age=0)
 
 
 class RedisIdentityStorage(IIdentityStorage):
@@ -193,19 +171,20 @@ class RedisIdentityStorage(IIdentityStorage):
     def load(self, sid: str) -> str:
         key = self.key(sid)
         self.redis.expire(key, self.time)  # increase ttl time
-        session = self.redis.get(key)  # session data obtained from redis might be NoneType
+        session = self.redis.get(
+            key
+        )  # session data obtained from redis might be NoneType
         return typing.cast(
-            str, self._decode(session) if isinstance(session, (str, bytes, bytearray)) and session else '',
+            str,
+            self._decode(session)
+            if isinstance(session, (str, bytes, bytearray)) and session
+            else "",
         )
 
     def save(self, sid: str, identity: str) -> bool:
         value = self._encode(identity)
         if value:
-            self.redis.setex(
-                name=self.key(sid),
-                value=value,
-                time=self.time
-            )
+            self.redis.setex(name=self.key(sid), value=value, time=self.time)
             return True
         return False
 
@@ -213,16 +192,18 @@ class RedisIdentityStorage(IIdentityStorage):
         self.redis.delete(self.key(sid))
 
     def key(self, sid: str) -> str:
-        return 'user:session:{}'.format(sid)
+        return "user:session:{}".format(sid)
 
-    def _decode(self, data: typing.Union[str, bytes, bytearray]) -> typing.Union[dict, list, str]:
+    def _decode(
+        self, data: typing.Union[str, bytes, bytearray]
+    ) -> typing.Union[dict, list, str]:
         try:
             return json.loads(data)
         except (TypeError, ValueError):
-            return ''
+            return ""
 
     def _encode(self, data: typing.Any) -> str:  # type: ignore  # (because typing.Any)
         try:
             return json.dumps(data)
         except (TypeError, ValueError):
-            return ''
+            return ""

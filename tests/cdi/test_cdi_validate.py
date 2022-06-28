@@ -1,3 +1,4 @@
+import asyncio
 import pytest
 
 from tests.cdi.interfaces import IListener, IManager, IService, IStorage
@@ -5,11 +6,9 @@ from tests.cdi.interfaces import IListener, IManager, IService, IStorage
 
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("cdi")
-async def test_privides_services(framework):
+async def test_provides_services(framework):
     bundle = await framework.install_bundle("tests.cdi.components")
     module = bundle.get_module()
-
-    assert len(module.EVENTS) == 0
 
     await bundle.start()
 
@@ -21,5 +20,4 @@ async def test_privides_services(framework):
     assert len(module.EVENTS) == 4
     assert module.EVENTS[3][0] == "invalidate"
 
-    del module.EVENTS[:]
     await framework.uninstall_bundle(bundle)

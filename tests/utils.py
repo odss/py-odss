@@ -1,4 +1,6 @@
+import asyncio
 from odss.core import Callback
+from odss.core.events import ServiceEvent
 
 TEXT_BUNDLE = "tests.bundles.text"
 SIMPLE_BUNDLE = "tests.bundles.simple"
@@ -38,3 +40,18 @@ class BundleListener(Listener):
 
 class AllListener(FrameworkListener, BundleListener, ServiceListener):
     pass
+
+
+
+class RefServiceListener:
+    def __init__(self, counter):
+        self.event = asyncio.Event()
+        self.counter = counter
+    def service_changed(self, event):
+        if event.kind == ServiceEvent.REGISTERED:
+            self.counter -= 1
+        if self.counter == 0:
+            self.event.set()
+
+    async def wait(self):
+        return await self.event.wait()

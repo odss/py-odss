@@ -63,28 +63,30 @@ class Activator:
         # await ctx.register_service(IHttpMiddlewareService, middleware2)
         # await ctx.register_service(IHttpMiddlewareService, middleware3)
 
+
 @component
 @provides(IHttpMiddlewareService)
 class Middleware:
     def __init_(self):
-        print('Middleware')
+        print("Middleware")
 
     def __call__(self, ctx, handler):
-        print('__call_2_')
+        print("__call_2_")
         return handler(ctx)
+
 
 @component
 @provides(IHttpMiddlewareService)
 def test_middle(ctx, handler):
-    print('test_middle')
+    print("test_middle")
     return handler(ctx)
 
 
 @component
-@provides('FooBar')
+@provides("FooBar")
 class FooBar:
     def __init_(self):
-        print('FooBar')
+        print("FooBar")
 
     def sign(self):
-        return 'Hi'
+        return "Hi"

@@ -31,8 +31,14 @@ async def framework():
 
 
 @pytest.fixture()
-def events(event_loop):
+@pytest.mark.asyncio
+async def events(event_loop):
     """
     Create EventDispatcher instance
     """
-    return EventDispatcher(TaskRunner(event_loop))
+    runner = TaskRunner(event_loop)
+    events = EventDispatcher(runner)
+    await runner.open()
+    yield events
+    await runner.close()
+

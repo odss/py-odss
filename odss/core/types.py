@@ -1,5 +1,6 @@
 import typing as t
 
+
 class IBundle:
 
     UNINSTALLED = 1
@@ -93,5 +94,3 @@ class IBundleContext:
 
     # def __fire_service_event(self, kind, reference):
     #     pass
-
-

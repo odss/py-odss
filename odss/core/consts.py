@@ -1,10 +1,9 @@
-SERVICE_ID = "__servive-id__"
+SERVICE_ID = "__servive_id__"
 OBJECTCLASS = "__objectclass__"
-SERVICE_BUNDLE_ID = "__module-id__"
-SERVICE_PRIORITY = "__service-priority__"
-FRAMEWORK_UUID = "__framework-uuid__"
+SERVICE_BUNDLE_ID = "__module_id__"
+SERVICE_PRIORITY = "__service_priority__"
+FRAMEWORK_UUID = "__framework_uuid__"
 
 ACTIVATOR_CLASS = "Activator"
-
 
 BLOCK_TIMEOUT = 10.0

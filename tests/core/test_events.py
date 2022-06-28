@@ -57,7 +57,7 @@ async def test_error_in_listener(events, listener):
     await events.fire_bundle_event(event)
 
     assert listener.last_event() == event
-    assert len(listener) == 1
+    assert len(listener.events) == 1
 
 
 @pytest.mark.asyncio
@@ -66,12 +66,13 @@ async def test_framework_listener(events, listener):
     assert events.add_framework_listener(listener)
     assert not events.add_framework_listener(listener)
     await events.fire_framework_event(event)
-    assert len(listener) == 1
+
+    assert len(listener.events) == 1
 
     assert events.remove_framework_listener(listener)
     assert not events.remove_framework_listener(listener)
     await events.fire_framework_event(event)
-    assert len(listener) == 1
+    assert len(listener.events) == 1
 
 
 def test_incorrect_service_listener(events):
@@ -144,20 +145,24 @@ async def test_bundle_events(framework, listener):
     events = listener.events
 
     bundle = await framework.install_bundle(SIMPLE_BUNDLE)
+    await asyncio.sleep(0)
 
     assert events[0].kind == FrameworkEvent.INSTALLED
 
     await bundle.start()
+    await asyncio.sleep(0)
 
     assert events[1].kind == FrameworkEvent.STARTING
     assert events[2].kind == FrameworkEvent.STARTED
 
     await bundle.stop()
+    await asyncio.sleep(0)
 
     assert events[3].kind == FrameworkEvent.STOPPING
     assert events[4].kind == FrameworkEvent.STOPPED
 
     await framework.uninstall_bundle(bundle)
+    await asyncio.sleep(0)
 
     assert events[5].kind == FrameworkEvent.UNINSTALLED
 

@@ -28,9 +28,7 @@ def _sep_bottom(sizes):
 
 
 def make_ascii_table(title, headers, records):
-
     sizes = [len(head) for head in headers]
-
     for row, record in enumerate(records):
         if len(headers) != len(record):
             raise ValueError(f"Diffrent size of headers and records (row={row})")

@@ -1,5 +1,5 @@
 from ..core.trackers import ServiceTracker
-from .consts import SERVICE_SHELL, SERVICE_SHELL_COMMAND
+from .consts import SERVICE_SHELL, SERVICE_SHELL_COMMANDS
 from .shell import Shell
 
 
@@ -20,7 +20,7 @@ class Activator:
 
 class CommandTracker(ServiceTracker):
     def __init__(self, ctx, shell):
-        super().__init__(self, ctx, SERVICE_SHELL_COMMAND)
+        super().__init__(self, ctx, SERVICE_SHELL_COMMANDS)
         self.shell = shell
 
     def on_adding_service(self, reference, service):

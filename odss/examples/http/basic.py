@@ -5,11 +5,12 @@ from odss.cdi.decorators import (
 )
 from satto.http.api import get, post, IHttpContext, IHttpRouteService, route
 
+
 @component
 @provides(IHttpRouteService)
 class AuthEndpoint:
-    def __init__(self, foobar: 'FooBar'):
-        print('__init__', foobar)
+    def __init__(self, foobar: "FooBar"):
+        print("__init__", foobar)
 
     @get("/users")
     def get_users(self, ctx: IHttpContext):

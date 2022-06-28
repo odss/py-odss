@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 class Framework(Bundle):
     def __init__(self, properties):
-        super().__init__(self, 0, "atto.framework", Integration(sys.modules[__name__]))
+        super().__init__(self, 0, "odss.framework", Integration(sys.modules[__name__]))
         self.loop: asyncio.events.AbstractEventLoop = asyncio.get_event_loop()
         self.__properties = properties
         self.__bundles = []
@@ -42,11 +42,11 @@ class Framework(Bundle):
         contex = BundleContext(self, self, self.__events)
         self.set_context(contex)
 
-    def add_task(self, target, *args):
-        return self.__runner.add_task(target, *args)
+    def create_task(self, target, *args):
+        return self.__runner.create_task(target, *args)
 
-    def run_job(self, target, *args):
-        return self.__runner.run_job(target, *args)
+    def create_job(self, target, *args):
+        return self.__runner.create_job(target, *args)
 
     def get_bundles(self):
         return self.__bundles.copy()
@@ -103,7 +103,6 @@ class Framework(Bundle):
         properties = properties.copy() if isinstance(properties, dict) else {}
 
         registration = self.__registry.register(bundle, target, service, properties)
-
         self._fire_service_event(ServiceEvent.REGISTERED, registration.get_reference())
         return registration
 
@@ -134,8 +133,7 @@ class Framework(Bundle):
         await self._fire_bundle_event(BundleEvent.INSTALLED, bundle)
         return bundle
 
-    async def uninstall_bundle( self, bundle: IBundle) -> None:
-
+    async def uninstall_bundle(self, bundle: IBundle) -> None:
         if bundle in self.__bundles:
             await bundle.stop()
             bundle._set_state(Bundle.UNINSTALLED)
@@ -145,13 +143,15 @@ class Framework(Bundle):
             self.__bundles.remove(bundle)
             if bundle.id in self.__activators:
                 del self.__activators[bundle.id]
-            await self.run_job(unload_bundle, bundle.name)
+            await self.create_job(unload_bundle, bundle.name)
 
     async def start(self, attach_signals=False) -> None:
         logger.info("Start odss.framework")
         if self.state in (Bundle.STARTING, Bundle.ACTIVE):
             logger.debug("Framework already started")
             return False
+
+        await self.__runner.open()
 
         self._set_state(Bundle.STARTING)
         await self._fire_framework_event(BundleEvent.STARTING)
@@ -174,15 +174,13 @@ class Framework(Bundle):
             await self._stopped.wait()
 
     async def stop(self) -> None:
-        logger.info("Stop odss.framework")
-
         if self.state != Bundle.ACTIVE:
-            logger.debug("Framewok not started")
             return False
+
+        logger.info("Stoping odss.framework")
 
         self._set_state(Bundle.STOPPING)
         await self._fire_framework_event(BundleEvent.STOPPING)
-
         for bundle in self.__bundles[::-1]:
             if self.state != Bundle.ACTIVE:
                 try:
@@ -193,15 +191,17 @@ class Framework(Bundle):
                     )
             else:
                 logger.debug("Bundle %s already stoped", bundle)
-
         self._set_state(Bundle.RESOLVED)
         await self._fire_framework_event(BundleEvent.STOPPED)
+        await self.__runner.close()
+
         if hasattr(self, "_stopped"):
             self._stopped.set()
 
     async def start_bundle(self, bundle):
         if self.state not in (Bundle.STARTING, Bundle.ACTIVE):
             return False
+
         if bundle.state in (Bundle.STARTING, Bundle.ACTIVE):
             return False
 
@@ -234,10 +234,8 @@ class Framework(Bundle):
         previous_state = bundle.state
 
         logger.debug("Stop bundle %s", bundle)
-
         bundle._set_state(Bundle.STOPPING)
         await self._fire_bundle_event(BundleEvent.STOPPING, bundle)
-
         try:
             stop_method = self.__get_activator_method(bundle, "stop")
             if stop_method:
@@ -253,8 +251,10 @@ class Framework(Bundle):
         for reference in self.__registry.get_bundle_references(bundle):
             self.__unregister_service(reference)
 
+
         bundle.remove_context()
         bundle._set_state(Bundle.RESOLVED)
+
         await self._fire_bundle_event(BundleEvent.STOPPED, bundle)
         return True
 
@@ -282,7 +282,8 @@ def register_signal_handling(framework) -> None:
     def signal_handle(exit_code: int) -> None:
         framework.loop.remove_signal_handler(signal.SIGTERM)
         framework.loop.remove_signal_handler(signal.SIGINT)
-        framework.add_task(framework.stop())
+        framework.loop.remove_signal_handler(signal.SIGHUP)
+        asyncio.create_task(framework.stop())
 
     try:
         framework.loop.add_signal_handler(signal.SIGTERM, signal_handle, 0)

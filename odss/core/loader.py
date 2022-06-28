@@ -26,11 +26,11 @@ class Manifest:
 
 
 async def load_bundle(runner, name: str, path: str = None) -> "Integration":
-    manifest = await runner.run_job(find_manifest, name, path)
+    manifest = await runner.create_job(find_manifest, name, path)
     if manifest:
         await process_requirements(runner, name, manifest.requirements)
 
-    integration = await runner.run_job(Integration.load_sync, name, path)
+    integration = await runner.create_job(Integration.load_sync, name, path)
     integration.manifest = manifest
     return integration
 

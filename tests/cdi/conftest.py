@@ -1,3 +1,6 @@
+import asyncio
+from async_timeout import timeout
+from odss.core.events import BundleEvent
 import pytest
 
 
@@ -6,6 +9,7 @@ import pytest
 async def cdi(framework):
     bundle = await framework.install_bundle("odss.cdi.core")
     await bundle.start()
+
     yield framework
     await bundle.stop()
     await framework.uninstall_bundle(bundle)
@@ -15,7 +19,10 @@ async def cdi(framework):
 @pytest.mark.asyncio
 async def components(cdi):
     bundle = await cdi.install_bundle("tests.cdi.components")
+
     await bundle.start()
+
     yield cdi
+
     await bundle.stop()
     await cdi.uninstall_bundle(bundle)

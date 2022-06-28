@@ -1,7 +1,7 @@
 import logging
 
 from ..core.consts import OBJECTCLASS, SERVICE_ID, SERVICE_PRIORITY
-from .consts import SERVICE_SHELL_COMMAND
+from .consts import SERVICE_SHELL_COMMANDS
 from .decorators import command
 from .utils import bundle_state_name, make_ascii_table
 
@@ -11,15 +11,14 @@ class Activator:
         pass
 
     async def start(self, ctx):
-        self.shell = ServiceShell(ctx)
-
-        ctx.register_service(SERVICE_SHELL_COMMAND, self.shell)
+        self.shell = BasicComands(ctx)
+        ctx.register_service(SERVICE_SHELL_COMMANDS, self.shell)
 
     async def stop(self, ctx):
         pass
 
 
-class ServiceShell:
+class BasicComands:
     def __init__(self, ctx):
         self.ctx = ctx
 
@@ -59,7 +58,6 @@ class ServiceShell:
         else:
             buff.append("    n/a")
         buff.append("Services using by bundle:")
-
 
         refs = ["    {0}".format(ref) for ref in bundle.get_using_services()]
         if refs:
@@ -161,7 +159,23 @@ class ServiceShell:
             return f"Unknown bundle ID: {bundle_id}"
 
         session.write_line(f"Stoping [Bundle id={bundle.id} name={bundle.name}]")
+
         await bundle.stop()
+
+    @command("reload")
+    async def reload_bundle(self, session, bundle_id: int):
+        """
+        Reload the bundle with the given ID.
+        """
+
+        bundle = self.ctx.get_bundle(int(bundle_id))
+        if bundle is None:
+            return "Unknown bundle ID: {bundle_id}"
+
+        session.write_line(f"Reload [Bundle id={bundle.id} name={bundle.name}]")
+        await bundle.uninstall()
+        bundle = await self.ctx.get_framework().install_bundle(bundle.name)
+        await bundle.start()
 
     @command()
     def properties(self, session):
@@ -169,7 +183,7 @@ class ServiceShell:
         List of all properties
         """
         properties = self.ctx.get_framework().get_properties().items()
-        lines = [item for item in properties]
+        lines = [(name, str(value)) for name, value in properties]
         return make_ascii_table("Properties", ["Property name", "Value"], lines)
 
     @command()

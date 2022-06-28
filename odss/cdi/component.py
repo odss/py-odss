@@ -83,7 +83,7 @@ class ComponentManager(IComponentManager):
         elif inspect.isroutine(self._context.factory_target):
             self._instance = self._context.factory_target
         else:
-            raise ValueError('Expected method or class')
+            raise ValueError("Expected method or class")
 
         await self.__handlers_callback("pre_validate")
 

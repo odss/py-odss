@@ -50,7 +50,7 @@ class HttpContext(IHttpContext):
         *,
         headers: t.Optional[t.Dict] = None,
         content_type: str = None,
-        charset: t.Optional[str] = None
+        charset: t.Optional[str] = None,
     ):
         if isinstance(body, str):
             body = body.encode("utf-8")

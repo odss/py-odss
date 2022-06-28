@@ -15,13 +15,13 @@ class Activator:
             ctx.register_service(
                 IHandlerFactory,
                 RequiresHandlerFactory(),
-                {PROP_HANDLER_NAME: HANDLER_REQUIRES}
+                {PROP_HANDLER_NAME: HANDLER_REQUIRES},
             ),
             ctx.register_service(
                 IHandlerFactory,
                 ConstructorRequiresHandlerFactory(),
-                {PROP_HANDLER_NAME: HANDLER_CONSTRUCTOR_REQUIRES}
-            )
+                {PROP_HANDLER_NAME: HANDLER_CONSTRUCTOR_REQUIRES},
+            ),
         ]
 
     async def stop(self, ctx: BundleContext) -> None:
@@ -32,7 +32,6 @@ class Activator:
 
 class RequiresHandlerFactory:
     def get_handlers(self, factory_context: FactoryContext) -> t.Iterable[IHandler]:
-
         requirements = factory_context.get_handler(HANDLER_REQUIRES)
         if requirements:
             return [
@@ -40,11 +39,12 @@ class RequiresHandlerFactory:
                 for field, requirement in requirements.items()
             ]
 
+
 class ConstructorRequiresHandlerFactory:
     def get_handlers(self, factory_context: FactoryContext) -> t.Iterable[IHandler]:
         requirements = factory_context.get_handler(HANDLER_CONSTRUCTOR_REQUIRES)
         if requirements:
-            return (ConstructorHandlerService(requirements), )
+            return (ConstructorHandlerService(requirements),)
 
 
 class RequiresHandlerService(IHandler):
@@ -91,7 +91,6 @@ class RequiresHandlerService(IHandler):
         self.trackers = []
 
 
-
 class ConstructorHandlerService(IHandler):
     def __init__(self, specifications: t.Iterable[str]) -> None:
         self.specifications = specifications
@@ -135,7 +134,11 @@ class ConstructorHandlerService(IHandler):
 
 class SpecificationsTracker(ServiceTracker):
     def __init__(
-        self, context: BundleContext, handler: RequiresHandlerService, specifiction: str, filter=None
+        self,
+        context: BundleContext,
+        handler: RequiresHandlerService,
+        specifiction: str,
+        filter=None,
     ):
         super().__init__(self, context, specifiction, filter)
         self.handler = handler

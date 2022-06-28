@@ -13,8 +13,10 @@ from .decorators import command
 
 logger = logging.getLogger(__name__)
 
+
 class OutputStream:
     pass
+
 
 class Shell:
     def __init__(self, ctx, bind_basic=False):
@@ -58,14 +60,14 @@ class Shell:
     @command(alias="exit")
     async def quit(self, session: OutputStream):
         """
-        Stops the shell session
+        Shutdown framework
         """
+        session.write_line("Bye...")
 
         def shutdown():
             framework = self.ctx.get_framework()
-            framework.add_task(framework.stop)
+            framework.create_task(framework.stop)
 
-        session.write_line("Bye...")
         asyncio.get_event_loop().call_soon(shutdown)
 
     def bind_handler(self, handler: t.Any):
@@ -118,6 +120,8 @@ class Shell:
         assert callable(
             handler
         ), f"Expected callable command handler for {namespace}.{name}"
+        lname = name if namespace == DEFAULT_NAMESPACE else f"{namespace}.{name}"
+        logger.debug(f"Register command: {lname}")
 
         space = self._commands[namespace]
         if name in space:
@@ -217,11 +221,9 @@ class Shell:
         if namespace not in self._commands:
             raise ValueError(f"Unknown command: {name}")
 
-        if name not in self._commands[namespace]:
-            if namespace == DEFAULT_NAMESPACE:
-                name = cmdname
+        if cmdname not in self._commands[namespace]:
             raise ValueError(f"Unknown command: {name}")
-        return namespace, name
+        return namespace, cmdname
 
 
 def _format_exception(exc_info):
@@ -281,8 +283,9 @@ HandlerInfo = t.Tuple[str, t.Callable, t.Dict[str, t.Any]]
 
 
 def _extract_command_handlers(obj: t.Any) -> HandlerInfo:
-    method = inspect.getmembers(obj, inspect.isroutine)
-    for _, fn in method:
-        attrs = getattr(fn, ODSS_SHELL_COMMAND_HANDLER, None)
-        if attrs:
-            yield fn, attrs
+    members = inspect.getmembers(obj, inspect.isroutine)
+    for name, fn in members:
+        if not name.startswith("_"):
+            attrs = getattr(fn, ODSS_SHELL_COMMAND_HANDLER, None)
+            if attrs:
+                yield fn, attrs

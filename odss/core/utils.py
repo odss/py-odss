@@ -1,6 +1,7 @@
 import inspect
 from contextlib import contextmanager
 
+
 def class_name(specification):
     if not specification:
         raise ValueError("No specifications given")
@@ -29,4 +30,3 @@ def classes_name(specifications):
 #             ctx.unget_service(reference)
 #         except BundleException:
 #             pass
-

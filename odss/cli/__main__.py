@@ -66,7 +66,7 @@ def handle_args(args):
     config.bundles.extend(args.bundles or [])
     if args.shell:
         config.bundles.extend(
-            ["odss.shell.core", "odss.shell.service", "odss.terminal.main"]
+            ["odss.shell.core", "odss.shell.commands", "odss.terminal.main"]
         )
     config.normalize()
     return config
@@ -75,13 +75,26 @@ def handle_args(args):
 async def setup_and_run_odss(config):
     if config.debug:
         print(
-            make_ascii_table("Properties", ["Key", "Value"], config.properties.items())
+            make_ascii_table(
+                "Properties",
+                ["Key", "Value"],
+                [(name, str(value)) for name, value in config.properties.items()],
+            )
         )
 
     framework = Framework(config.properties)
-    for bundle_name in config.bundles:
-        await framework.install_bundle(bundle_name)
-    await framework.start(True)
+    await asyncio.gather(*[
+        asyncio.create_task(
+            framework.install_bundle(bundle_name),
+            name=bundle_name
+        )
+        for bundle_name in config.bundles
+    ])
+    try:
+        await framework.start(True)
+    finally:
+        pass
+        # await framework.stop()
 
 
 def main():

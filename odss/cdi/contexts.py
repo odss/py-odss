@@ -116,7 +116,7 @@ class FactoryContext:
     def get_instances(self) -> t.Dict:
         if self.__instances:
             return tuple(self.__instances.items())
-        return ((self.name, {}), )
+        return ((self.name, {}),)
 
     def has_handler(self, name: str) -> bool:
         return name in self.__handlers

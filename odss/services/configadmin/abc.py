@@ -79,7 +79,7 @@ class IConfiguration(metaclass=abc.ABCMeta):
 
 class IConfigurationStorage(metaclass=abc.ABCMeta):
     @abc.abstractmethod
-    async def save(self, pid: str, properties: TProperties):
+    async def store(self, pid: str, properties: TProperties):
         """
         Save properties from store
         """

@@ -33,7 +33,7 @@ class IHttpContext(metaclass=abc.ABCMeta):
         *,
         headers: t.Optional[t.Dict] = None,
         content_type: str = None,
-        charset: t.Optional[str] = None
+        charset: t.Optional[str] = None,
     ):
         raise NotImplementedError()
 

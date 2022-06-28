@@ -12,7 +12,9 @@ pytestmark = pytest.mark.asyncio
 
 async def test_create_empty_configuration(config_admin: ConfigurationAdmin):
     config = await config_admin.get_configuration("foo.bar")
-    assert config.get_properties() == {}
+    properties = config.get_properties()
+    assert properties[SERVICE_PID] == 'foo.bar'
+    assert list(properties.keys()) == [SERVICE_PID]
 
 
 async def test_get_configuration_from_directory(
@@ -42,10 +44,15 @@ async def test_notify_service(config_admin: ConfigurationAdmin, mocker: MockerFi
 
     await config_admin.add_managed_service("mock.pid", service_mock)
 
+    service_mock.updated.assert_called_once_with(
+        ({SERVICE_PID: "mock.pid"}),
+    )
+    service_mock.updated.reset_mock()
+
     await config.update({"key": "value"})
 
     service_mock.updated.assert_called_once_with(
-        ({SERVICE_PID: "mock.pid", "key": "value"}),
+        ({ SERVICE_PID: "mock.pid", "key": "value" }),
     )
 
     await config_admin.remove_managed_service("mock.pid", service_mock)
@@ -57,6 +64,12 @@ async def test_notify_factory(config_admin: ConfigurationAdmin, mocker: MockerFi
     config = await config_admin.create_factory_configuration("factory.pid")
 
     await config_admin.add_managed_factory("factory.pid", service_mock)
+
+    service_mock.updated.assert_called_once()
+    args = service_mock.updated.call_args[0]
+    assert args[0].startswith("factory.pid")
+
+    service_mock.updated.reset_mock()
 
     await config.update({"key": "value"})
 
@@ -76,6 +89,10 @@ async def test_remove_configuration(
     config = await config_admin.get_configuration("remove.mock.pid")
 
     await config_admin.add_managed_service("remove.mock.pid", service_mock)
+
+    service_mock.updated.assert_called_once_with({ SERVICE_PID: "remove.mock.pid"})
+    service_mock.updated.reset_mock()
+
     await config.remove()
 
     service_mock.updated.assert_called_once_with(None)

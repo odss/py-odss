@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from .consts import OBJECTCLASS
@@ -7,6 +8,18 @@ from .utils import class_name
 
 logger = logging.getLogger(__name__)
 
+
+BUNDLE_EVENTS = {
+    1: 'INSTALLED',
+    2: 'STARTED',
+    4: 'STOPPED',
+    8: 'UPDATED',
+    10: 'UNINSTALLED',
+    20: 'RESOLVED',
+    40: 'UNRESOLVED',
+    80: 'STARTING',
+    100: 'STOPPING'
+}
 
 class BundleEvent:
 
@@ -57,13 +70,18 @@ class BundleEvent:
         return self.__origin
 
     def __str__(self):
-        return "BundleEvent(kind={}, bundle={})".format(self.__kind, self.__bundle)
+        return "BundleEvent(kind={}, bundle={})".format(BUNDLE_EVENTS[self.__kind], self.__bundle)
 
 
 class FrameworkEvent(BundleEvent):
     pass
 
-
+SERVICE_EVENTS = {
+    1: "REGISTERED",
+    2: "MODIFIED",
+    4: "UNREGISTERING",
+    8: "MODIFIED_ENDMATCH"
+}
 class ServiceEvent:
 
     """Service has been registered"""
@@ -104,14 +122,14 @@ class ServiceEvent:
         return self.__properties.copy()
 
     def __str__(self):
-        return "ServiceEvent({}, {})".format(self.__kind, self.__reference)
-
+        return "ServiceEvent({}, {})".format(SERVICE_EVENTS[self.__kind], self.__reference)
 
 class Listeners:
     def __init__(self, runner, listener_method):
-        self.runner = runner
+        super().__init__()
         self.listeners = []
         self.listener_method = listener_method
+        self.runner = runner
 
     def clear_listeners(self):
         self.listeners = []
@@ -138,18 +156,16 @@ class Listeners:
             return False
 
     async def fire_event(self, event):
-        tasks = [
-            self.runner.add_task(getattr(listener, self.listener_method), event)
-            for listener in self.listeners[:]
-        ]
+        methods = [getattr(listener, self.listener_method) for listener in self.listeners]
+        tasks = [self.runner.create_task(method, event) for method in methods]
         await self.runner.wait_for_tasks(tasks)
-
 
 class ServiceListeners:
     def __init__(self, runner):
-        self.runner = runner
+        super().__init__()
         self.by_interface = {}
         self.by_listeners = {}
+        self.runner = runner
 
     def clear(self):
         self.by_interface = {}
@@ -168,7 +184,6 @@ class ServiceListeners:
             return False
 
     def add_listener(self, listener, interface=None, query=None):
-
         if listener is None or not hasattr(listener, "service_changed"):
             raise BundleException(
                 'Missing method: "service_changed" in given service listener'
@@ -204,22 +219,21 @@ class ServiceListeners:
         for listener, interface, query in listeners:
             method = listener.service_changed
             if query.match(properties):
-                tasks.append((method, event))
+                self.runner.enqueue_task(method, event)
             elif event.kind == ServiceEvent.MODIFIED:
                 previous = event.previous_properties
                 if query.match(previous):
                     event = ServiceEvent(
                         ServiceEvent.MODIFIED_ENDMATCH, event.reference, previous
                     )
-                    tasks.append(method, event)
-        self.runner.add_tasks(tasks)
-
+                    self.runner.enqueue_task(method, event)
 
 class EventDispatcher:
     def __init__(self, runner):
-        self.framework = Listeners(runner, "framework_changed")
-        self.bundles = Listeners(runner, "bundle_changed")
-        self.services = ServiceListeners(runner)
+        self.runner = runner
+        self.framework = Listeners(self.runner, "framework_changed")
+        self.bundles = Listeners(self.runner, "bundle_changed")
+        self.services = ServiceListeners(self.runner)
 
     def clear(self):
         """
@@ -247,11 +261,11 @@ class EventDispatcher:
     def remove_service_listener(self, listener):
         return self.services.remove_listener(listener)
 
-    def fire_framework_event(self, event):
-        return self.framework.fire_event(event)
+    async def fire_framework_event(self, event):
+        await self.framework.fire_event(event)
 
-    def fire_bundle_event(self, event):
-        return self.bundles.fire_event(event)
+    async def fire_bundle_event(self, event):
+        await self.bundles.fire_event(event)
 
     def fire_service_event(self, event):
         self.services.fire_event(event)

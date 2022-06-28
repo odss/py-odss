@@ -42,6 +42,8 @@ async def test_remove_configuration_by_directory(
         "foo.bar", {"foo": "bar"}, config_storage
     )
 
+    assert config_directory.exists("foo.bar")
+
     await config_directory.remove("foo.bar")
     with pytest.raises(ValueError):
         assert configuration.get_properties()

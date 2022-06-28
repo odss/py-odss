@@ -1,19 +1,24 @@
-from odss.core.trackers import ServiceTracker
+from odss.shell.decorators import command
+from odss.shell.consts import SERVICE_SHELL_COMMANDS
+from odss.shell.utils import make_ascii_table
 
-from .consts import (
-    SERVICE_PID,
-    FACTORY_PID,
-    SERVICE_CONFIGURATION_ADMIN,
-    SERVICE_CONFIGADMIN_MANAGED,
-    SERVICE_CONFIGADMIN_MANAGED_FACTORY,
-    SERVICE_CONFIGADMIN_STORAGE,
-)
+from .abc import IConfigurationAdmin, IConfigurationStorage
 from .services import ConfigurationAdmin
+from .storages import MemoryStorage, JsonFileStorage
+from .trackers import StorageTracker, ManagedTracker, ManagedFactoryTracker
 
 
 class Activator:
     async def start(self, ctx):
         self.admin = ConfigurationAdmin()
+        storage = JsonFileStorage()
+        await storage.open()
+
+        ctx.register_service(IConfigurationAdmin, self.admin)
+        # ctx.register_service(IConfigurationStorage, MemoryStorage())
+
+        ctx.register_service(IConfigurationStorage, storage)
+        ctx.register_service(SERVICE_SHELL_COMMANDS, Commands(self.admin))
         self.trackers = [
             StorageTracker(ctx, self.admin),
             ManagedTracker(ctx, self.admin),
@@ -22,51 +27,55 @@ class Activator:
         for tracker in self.trackers:
             await tracker.open()
 
-        ctx.register_service(SERVICE_CONFIGURATION_ADMIN, self.admin)
-
     async def stop(self, ctx):
         for tracker in self.trackers:
             await tracker.close()
         self.admin = None
 
 
-class ManagedTracker(ServiceTracker):
-    def __init__(self, ctx, admin: ConfigurationAdmin):
-        super().__init__(self, ctx, SERVICE_CONFIGADMIN_MANAGED)
+class Commands:
+    def __init__(self, admin: ConfigurationAdmin):
         self.admin = admin
 
-    async def on_adding_service(self, reference, service):
-        pid = reference.get_property(SERVICE_PID)
-        await self.admin.add_managed_service(pid, service)
+    @command("list", "cm")
+    async def cm_list(self, session):
+        """
+        List of pids
+        """
+        items = self.admin.list_configurations()
+        return make_ascii_table(
+            "List", ["PID"], [[config.get_pid()] for config in items]
+        )
 
-    async def on_removed_service(self, reference, service):
-        pid = reference.get_property(SERVICE_PID)
-        await self.admin.remove_managed_service(pid, service)
+    @command("create", "cm")
+    async def cm_create(self, session, pid, sufix=None):
+        """
+        Remove of selected configuraton pid
+        """
+        config = await self.admin.create_factory_configuration(pid, sufix)
+        return config.get_pid()
 
+    @command("del", "cm")
+    async def cm_del(self, session, pid):
+        """
+        Remove of selected configuraton pid
+        """
+        config = await self.admin.get_configuration(pid)
+        await config.remove()
 
-class ManagedFactoryTracker(ServiceTracker):
-    def __init__(self, ctx, admin: ConfigurationAdmin):
-        super().__init__(self, ctx, SERVICE_CONFIGADMIN_MANAGED_FACTORY)
-        self.admin = admin
+    @command("get", "cm")
+    async def cm_get(self, session, pid):
+        """
+        Properties of selected configuration
+        """
+        config = await self.admin.get_configuration(pid)
+        lines = [(name, str(value)) for name, value in config.get_properties().items()]
+        return make_ascii_table(f"Properties: {pid}", ["Property name", "Value"], lines)
 
-    async def on_adding_service(self, reference, service):
-        # pid = reference.get_property(SERVICE_PID)
-        factory_pid = reference.get_property(FACTORY_PID)
-        await self.admin.add_managed_factory(factory_pid, service)
-
-    async def on_removed_service(self, reference, service):
-        # pid = reference.get_property(SERVICE_PID)
-        factory_pid = reference.get_property(FACTORY_PID)
-        await self.admin.remove_managed_factory(factory_pid, service)
-
-
-class StorageTracker(ServiceTracker):
-    def __init__(self, ctx, admin: ConfigurationAdmin):
-        super().__init__(self, ctx, SERVICE_CONFIGADMIN_STORAGE)
-        self.admin = admin
-
-    async def on_adding_service(self, reference, service):
-        await self.admin.add_storage(service)
-
-    async def on_removed_service(self, reference, service):
-        await self.admin.remove_storage(service)
+    @command("set", "cm")
+    async def cm_set(self, session, pid, name, value):
+        """
+        Set value to selected pid
+        """
+        config = await self.admin.get_configuration(pid)
+        await config.update({name: value})

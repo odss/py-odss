@@ -1,7 +1,7 @@
 import asyncio
 
 from odss.core.trackers import ServiceTracker
-from odss.shell.consts import SERVICE_SHELL  # , SERVICE_SHELL_COMMAND
+from odss.shell.consts import SERVICE_SHELL  # , SERVICE_SHELL_COMMANDS
 
 from .session import Session
 

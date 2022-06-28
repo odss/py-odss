@@ -22,17 +22,16 @@ CORE_HANDLERS = (
     "odss.cdi.handlers.provides",
 )
 
+
 class Activator:
     """
     CDI Bundle Activator
     """
 
-
     def __init__(self):
         # self._registration = None
         self.service = None
         self.bundles = []
-
 
     async def start(self, ctx: BundleContext) -> None:
         """
@@ -98,7 +97,6 @@ class CdiService:
         name = reference.get_property(PROP_HANDLER_NAME)
         if name in self._handlers:
             raise ValueError(f"Hadler: {name} already register")
-
         self._handlers[name] = service
 
         succeeded = []
@@ -152,7 +150,9 @@ class CdiService:
             for name, properties in factory_context.get_instances():
                 await self._setup_factory(factory_name, name, properties)
 
-    async def _setup_factory(self, factory_name: str, instance_name: str, properties = None):
+    async def _setup_factory(
+        self, factory_name: str, instance_name: str, properties=None
+    ):
         self._valid_instance_name(instance_name)
 
         factory_target = self.__factories[factory_name]
@@ -168,11 +168,10 @@ class CdiService:
     async def _try_setup_factory(self, context: ComponentContext):
         factory_context = context.factory_context
         handlers_names = factory_context.get_handlers_names()
-
         try:
             handlers_factories = self._get_handlers_factories(handlers_names)
         except KeyError as ex:
-            print(f'Missing handler {ex}')
+            print(f'Missing: {handlers_names}')
             return False
 
         all_handlers = []
@@ -259,9 +258,10 @@ def _find_components(bundle: Bundle):
     module = bundle.get_module()
     for name in dir(module):
         factory_target = getattr(module, name)
-        if not inspect.isclass(factory_target) and not inspect.isroutine(factory_target):
+        if not inspect.isclass(factory_target) and not inspect.isroutine(
+            factory_target
+        ):
             continue
-
 
         # Import only elements from this module
         if sys.modules[factory_target.__module__] is not module:

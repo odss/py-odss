@@ -170,7 +170,3 @@ class BundleContext(IBundleContext):
 
     def remove_service_listener(self, listener):
         return self.__events.services.remove_listener(listener)
-
-    async def __fire_service_event(self, kind, reference):
-        event = ServiceEvent(kind, reference)
-        await self.__events.fire_service_event(event)

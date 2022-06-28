@@ -1,13 +1,15 @@
+import asyncio
 from odss.cdi.decorators import component, bind, invalidate, provides, unbind, validate
 
 from .interfaces import IListener, IManager, IService, IStorage
-
 
 EVENTS = []
 
 @component
 @provides(IService)
 class MyService:
+    def __init__(self) -> None:
+        print('MyService')
     pass
 
 
@@ -27,7 +29,6 @@ class MyListener:
 @provides(IManager)
 class ManagerComponent:
     def __init__(self, service: IService, storage: IStorage):
-        print('ManagerComponent')
         self.service = service
         self.storage = storage
 

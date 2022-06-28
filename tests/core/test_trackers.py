@@ -1,9 +1,10 @@
 import asyncio
+from odss.core.events import ServiceEvent
 import pytest
 
 from odss.core.trackers import ServiceTracker
 from tests.core.interfaces import ITextService
-from tests.utils import TEXT_BUNDLE, TRANSLATE_BUNDLE
+from tests.utils import TEXT_BUNDLE, TRANSLATE_BUNDLE, RefServiceListener
 
 
 @pytest.mark.asyncio
@@ -39,15 +40,18 @@ async def test_simple_tracker(framework):
 
 @pytest.mark.asyncio
 async def test_listener_tracker(framework):
-    context = framework.get_context()
+    ctx = framework.get_context()
 
-    tracker = TextServiceTracker(context)
+    waiter = RefServiceListener(2)
+    ctx.add_service_listener(waiter)
+
+    tracker = TextServiceTracker(ctx)
     await tracker.open()
 
-    bundle = await context.install_bundle(TEXT_BUNDLE)
+    bundle = await ctx.install_bundle(TEXT_BUNDLE)
     await bundle.start()
 
-    await asyncio.sleep(0.01)
+    await waiter.wait()
 
     assert len(tracker.get_service_references()) == 2
 
@@ -63,17 +67,18 @@ async def test_listener_tracker(framework):
     assert tracker.events[2][0] == "on_removed_service"
     assert tracker.events[3][0] == "on_removed_service"
 
-
 class TextServiceTracker(ServiceTracker):
     def __init__(self, ctx, query=None):
         super().__init__(self, ctx, ITextService, query)
         self.events = []
 
     async def on_adding_service(self, reference, service):
+        print('on_adding_service', service)
         self.events.append(("on_adding_service", reference, service))
 
     async def on_modified_service(self, reference, service):
         self.events.append(("on_modified_service", reference, service))
 
     async def on_removed_service(self, reference, service):
+        print('on_removed_service', service)
         self.events.append(("on_removed_service", reference, service))

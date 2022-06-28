@@ -11,6 +11,7 @@ from .utils import class_name, classes_name
 
 logger = logging.getLogger(__name__)
 
+
 class ServiceReference:
 
     __slots__ = [
@@ -113,7 +114,7 @@ class ServiceRegistry:
         properties[SERVICE_BUNDLE_ID] = bundle.id
 
         if SERVICE_PRIORITY not in properties:
-            properties[SERVICE_PRIORITY] = 0
+            properties[SERVICE_PRIORITY] = 50
 
         ref = ServiceReference(bundle, properties)
         self._services[ref] = service
@@ -186,7 +187,6 @@ class ServiceRegistry:
         except KeyError:
             raise BundleException(f"Service not found fo reference: {reference}")
 
-
     def unget_service(self, bundle, reference):
         if not isinstance(reference, ServiceReference):
             raise BundleException("Expected ServiceReference object")
@@ -202,10 +202,10 @@ class ServiceRegistry:
             pass
 
     def get_bundle_references(self, bundle):
-        return self.__bundle_services.get(bundle, [])
+        return self.__bundle_services.get(bundle, [])[:]
 
     def get_bundle_using_services(self, bundle):
-        return list(self.__bundle_unsing.get(bundle, {}).keys())
+        return list(self.__bundle_unsing.get(bundle, {}).keys())[:]
 
 
 class ServiceRegistration:

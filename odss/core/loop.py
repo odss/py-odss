@@ -1,6 +1,7 @@
 import asyncio
 import inspect
 import logging
+from socket import timeout
 import typing as t
 from time import monotonic
 from collections.abc import Awaitable
@@ -22,11 +23,70 @@ def is_callback(func: t.Callable[..., t.Any]) -> bool:
 BLOCK_LOG_TIMEOUT = 10
 
 
+
+class TaskPool:
+    def __init__(self, max_workers: int = 8):
+        self.max_workers = max_workers
+        self.loop_event = asyncio.Event()
+        self.tasks = asyncio.Queue()
+        self.workers = []
+
+    def enqueue(self, handler, args):
+        self.tasks.put_nowait((handler, args))
+
+    async def start(self):
+        if self.loop_event.is_set():
+            return
+        self.workers = [asyncio.create_task(self._run(id), name=f'Worker({id})') for i in range(self.max_workers)]
+
+    async def stop(self):
+        if self.loop_event.is_set():
+            return
+
+        self.loop_event.set()
+        for i in range(self.max_workers):
+            await self.tasks.put(self.loop_event)
+
+        await self.tasks.join()
+
+        for worker in self.workers:
+            worker.cancel()
+        self.workers = []
+
+    async def _run(self, id: int):
+        while True:
+            try:
+                task = await self.tasks.get()
+                if task == self.loop_event:
+                    self.tasks.task_done()
+                    break
+                handler, args = task
+                try:
+                    result = handler(*args)
+                    if asyncio.iscoroutine(result):
+                        await result
+                finally:
+                    self.tasks.task_done()
+            except asyncio.CancelledError as ex:
+                break
+            except Exception as ex:
+                logger.exception(ex)
+
 class TaskRunner:
     def __init__(self, loop):
         self.loop = loop
+        self.task_pool = TaskPool()
 
-    def add_task(self, target, *args) -> asyncio.Task:
+    async def open(self):
+        await self.task_pool.start()
+
+    async def close(self):
+        await self.task_pool.stop()
+
+    def enqueue_task(self, handler, *args):
+        self.task_pool.enqueue(handler, args)
+
+    def create_task(self, target, *args) -> asyncio.Task:
         assert target
         if asyncio.iscoroutine(target):
             return self.loop.create_task(target)
@@ -39,10 +99,10 @@ class TaskRunner:
             "Incorrect type of target. Excpected function, coroutine or coroutinefunction"
         )
 
-    def add_tasks(self, targets) -> asyncio.Task:
-        return [self.add_task(target, *args) for target, *args in targets]
+    def create_tasks(self, targets) -> asyncio.Task:
+        return [self.create_task(target, *args) for target, *args in targets]
 
-    def run_job(self, target, *args) -> asyncio.Future:
+    def create_job(self, target, *args) -> asyncio.Future:
         return self.loop.run_in_executor(None, target, *args)
 
     async def wait_for_tasks(self, tasks) -> t.Awaitable:
