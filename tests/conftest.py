@@ -41,4 +41,3 @@ async def events(event_loop):
     await runner.open()
     yield events
     await runner.close()
-

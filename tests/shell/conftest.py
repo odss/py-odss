@@ -1,18 +1,21 @@
 import pytest
 
-from odss.terminal.session import Session
 from odss.shell.shell import Shell
 
 
-class TestSession(Session):
+class TestSession:
     def __init__(self):
-        super().__init__({})
+        # super().__init__({})
         self.stack = []
         self.output = ""
         self.buff = []
 
     def write(self, data: str):
         self.buff.append(data)
+
+    def write_line(self, line: str):
+        self.buff.append(f"{line}\n")
+        self.flush()
 
     def flush(self):
         self.output += "".join(self.buff)
@@ -38,11 +41,3 @@ def shell(framework):
     Create shell service
     """
     return Shell(framework.get_context())
-
-
-@pytest.fixture()
-def service_shell(framework):
-    """
-    Create shell service
-    """
-    return ServiceShell(framework.get_context())

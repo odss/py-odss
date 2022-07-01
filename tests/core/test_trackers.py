@@ -67,18 +67,19 @@ async def test_listener_tracker(framework):
     assert tracker.events[2][0] == "on_removed_service"
     assert tracker.events[3][0] == "on_removed_service"
 
+
 class TextServiceTracker(ServiceTracker):
     def __init__(self, ctx, query=None):
         super().__init__(self, ctx, ITextService, query)
         self.events = []
 
     async def on_adding_service(self, reference, service):
-        print('on_adding_service', service)
+        print("on_adding_service", service)
         self.events.append(("on_adding_service", reference, service))
 
     async def on_modified_service(self, reference, service):
         self.events.append(("on_modified_service", reference, service))
 
     async def on_removed_service(self, reference, service):
-        print('on_removed_service', service)
+        print("on_removed_service", service)
         self.events.append(("on_removed_service", reference, service))

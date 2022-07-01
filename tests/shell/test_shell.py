@@ -3,6 +3,7 @@ import pytest
 from odss.shell.decorators import command
 from odss.shell.shell import Shell
 
+
 def command_handler():
     pass
 
@@ -36,6 +37,7 @@ def test_unregister_command(shell):
 
     assert not shell.unregister_command("test"), "Not unregister command"
     assert shell.unregister_command("test", "ns"), "Not unregister command"
+
 
 @pytest.mark.asyncio
 async def test_execute_incorrect_commands(shell, shell_session):

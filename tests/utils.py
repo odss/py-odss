@@ -42,11 +42,11 @@ class AllListener(FrameworkListener, BundleListener, ServiceListener):
     pass
 
 
-
 class RefServiceListener:
     def __init__(self, counter):
         self.event = asyncio.Event()
         self.counter = counter
+
     def service_changed(self, event):
         if event.kind == ServiceEvent.REGISTERED:
             self.counter -= 1

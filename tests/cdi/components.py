@@ -5,11 +5,13 @@ from .interfaces import IListener, IManager, IService, IStorage
 
 EVENTS = []
 
+
 @component
 @provides(IService)
 class MyService:
     def __init__(self) -> None:
-        print('MyService')
+        print("MyService")
+
     pass
 
 

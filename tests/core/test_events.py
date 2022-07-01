@@ -2,7 +2,12 @@ import asyncio
 import pytest
 
 from odss.core import Callback, create_framework
-from odss.core.consts import OBJECTCLASS, SERVICE_ID, SERVICE_BUNDLE_ID, SERVICE_PRIORITY
+from odss.core.consts import (
+    OBJECTCLASS,
+    SERVICE_ID,
+    SERVICE_BUNDLE_ID,
+    SERVICE_PRIORITY,
+)
 from odss.core.errors import BundleException
 from odss.core.events import BundleEvent, FrameworkEvent, ServiceEvent
 from odss.core.registry import ServiceReference
@@ -43,6 +48,7 @@ def test_incorrect_framework_listener(events):
 
     with pytest.raises(BundleException):
         events.add_framework_listener(Listener())
+
 
 @pytest.mark.asyncio
 async def test_error_in_listener(events, listener):

@@ -13,7 +13,7 @@ pytestmark = pytest.mark.asyncio
 async def test_create_empty_configuration(config_admin: ConfigurationAdmin):
     config = await config_admin.get_configuration("foo.bar")
     properties = config.get_properties()
-    assert properties[SERVICE_PID] == 'foo.bar'
+    assert properties[SERVICE_PID] == "foo.bar"
     assert list(properties.keys()) == [SERVICE_PID]
 
 
@@ -52,7 +52,7 @@ async def test_notify_service(config_admin: ConfigurationAdmin, mocker: MockerFi
     await config.update({"key": "value"})
 
     service_mock.updated.assert_called_once_with(
-        ({ SERVICE_PID: "mock.pid", "key": "value" }),
+        ({SERVICE_PID: "mock.pid", "key": "value"}),
     )
 
     await config_admin.remove_managed_service("mock.pid", service_mock)
@@ -90,7 +90,7 @@ async def test_remove_configuration(
 
     await config_admin.add_managed_service("remove.mock.pid", service_mock)
 
-    service_mock.updated.assert_called_once_with({ SERVICE_PID: "remove.mock.pid"})
+    service_mock.updated.assert_called_once_with({SERVICE_PID: "remove.mock.pid"})
     service_mock.updated.reset_mock()
 
     await config.remove()

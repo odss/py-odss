@@ -66,7 +66,7 @@ def test_instantiate():
 
     instances = get_factory_context(Dummy1).get_instances()
     assert len(instances) == 1
-    assert instances == ((Dummy1.__name__, {}), )
+    assert instances == ((Dummy1.__name__, {}),)
 
     @instantiate("dummy")
     @instantiate("new-dummy", {"id": 1})
@@ -116,19 +116,19 @@ def test_requires():
 
     requirements = get_factory_context(Dummy2).get_handler(consts.HANDLER_REQUIRES)
     assert len(requirements) == 2
-    assert requirements["_field1"] == (("test1", ), None)
-    assert requirements["_field2"] == (("test2", ), None)
-
+    assert requirements["_field1"] == (("test1",), None)
+    assert requirements["_field2"] == (("test2",), None)
 
     @component
     class Dummy3:
-        def __init__(self, test: 'Test3'):
+        def __init__(self, test: "Test3"):
             pass
 
-    requirements = get_factory_context(Dummy3).get_handler(consts.HANDLER_CONSTRUCTOR_REQUIRES)
+    requirements = get_factory_context(Dummy3).get_handler(
+        consts.HANDLER_CONSTRUCTOR_REQUIRES
+    )
     assert len(requirements) == 1
-    assert requirements == ("Test3", )
-
+    assert requirements == ("Test3",)
 
 
 def test_default_requires():
