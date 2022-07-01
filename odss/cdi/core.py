@@ -171,7 +171,7 @@ class CdiService:
         try:
             handlers_factories = self._get_handlers_factories(handlers_names)
         except KeyError as ex:
-            print(f'Missing: {handlers_names}')
+            print(f"Missing: {handlers_names}")
             return False
 
         all_handlers = []

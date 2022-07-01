@@ -140,6 +140,8 @@ class Shell:
 
         if namespace in self._commands and name in self._commands[namespace]:
             del self._commands[namespace][name]
+            lname = name if namespace == DEFAULT_NAMESPACE else f"{namespace}.{name}"
+            logger.debug(f"Unregister command: {lname}")
 
             if not self._commands[namespace]:
                 del self._commands[namespace]
@@ -151,6 +153,8 @@ class Shell:
     def unregister_commands(self, namespace: str) -> bool:
         namespace = (namespace or "").strip().lower()
         assert namespace, "No command namespace"
+        logger.debug(f"Unregister commands: {namespace}.*")
+
         if namespace in self._commands:
             del self._commands[namespace]
             return True

@@ -5,21 +5,23 @@ from .consts import OBJECTCLASS
 from .errors import BundleException
 from .query import create_query
 from .utils import class_name
+from .loop import wait_for_tasks
 
 logger = logging.getLogger(__name__)
 
 
 BUNDLE_EVENTS = {
-    1: 'INSTALLED',
-    2: 'STARTED',
-    4: 'STOPPED',
-    8: 'UPDATED',
-    10: 'UNINSTALLED',
-    20: 'RESOLVED',
-    40: 'UNRESOLVED',
-    80: 'STARTING',
-    100: 'STOPPING'
+    1: "INSTALLED",
+    2: "STARTED",
+    4: "STOPPED",
+    8: "UPDATED",
+    10: "UNINSTALLED",
+    20: "RESOLVED",
+    40: "UNRESOLVED",
+    80: "STARTING",
+    100: "STOPPING",
 }
+
 
 class BundleEvent:
 
@@ -70,18 +72,23 @@ class BundleEvent:
         return self.__origin
 
     def __str__(self):
-        return "BundleEvent(kind={}, bundle={})".format(BUNDLE_EVENTS[self.__kind], self.__bundle)
+        return "BundleEvent(kind={}, bundle={})".format(
+            BUNDLE_EVENTS[self.__kind], self.__bundle
+        )
 
 
 class FrameworkEvent(BundleEvent):
     pass
 
+
 SERVICE_EVENTS = {
     1: "REGISTERED",
     2: "MODIFIED",
     4: "UNREGISTERING",
-    8: "MODIFIED_ENDMATCH"
+    8: "MODIFIED_ENDMATCH",
 }
+
+
 class ServiceEvent:
 
     """Service has been registered"""
@@ -122,7 +129,10 @@ class ServiceEvent:
         return self.__properties.copy()
 
     def __str__(self):
-        return "ServiceEvent({}, {})".format(SERVICE_EVENTS[self.__kind], self.__reference)
+        return "ServiceEvent({}, {})".format(
+            SERVICE_EVENTS[self.__kind], self.__reference
+        )
+
 
 class Listeners:
     def __init__(self, runner, listener_method):
@@ -156,9 +166,12 @@ class Listeners:
             return False
 
     async def fire_event(self, event):
-        methods = [getattr(listener, self.listener_method) for listener in self.listeners]
+        methods = [
+            getattr(listener, self.listener_method) for listener in self.listeners
+        ]
         tasks = [self.runner.create_task(method, event) for method in methods]
-        await self.runner.wait_for_tasks(tasks)
+        await wait_for_tasks(tasks)
+
 
 class ServiceListeners:
     def __init__(self, runner):
@@ -227,6 +240,7 @@ class ServiceListeners:
                         ServiceEvent.MODIFIED_ENDMATCH, event.reference, previous
                     )
                     self.runner.enqueue_task(method, event)
+
 
 class EventDispatcher:
     def __init__(self, runner):

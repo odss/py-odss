@@ -83,22 +83,22 @@ async def setup_and_run_odss(config):
         )
 
     framework = Framework(config.properties)
-    await asyncio.gather(*[
-        asyncio.create_task(
-            framework.install_bundle(bundle_name),
-            name=bundle_name
-        )
-        for bundle_name in config.bundles
-    ])
+    # await asyncio.gather(*[
+    #     asyncio.create_task(
+    #         framework.install_bundle(bundle_name),
+    #         name=bundle_name
+    #     )
+    #     for bundle_name in config.bundles
+    # ])
+    for bundle_name in config.bundles:
+        await framework.install_bundle(bundle_name)
     try:
         await framework.start(True)
     finally:
-        pass
-        # await framework.stop()
+        framework.loop.create_task(framework.stop())
 
 
 def main():
-
     args = get_arguments()
     config = handle_args(args)
     try:

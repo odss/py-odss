@@ -16,7 +16,7 @@ from .consts import ACTIVATOR_CLASS, BLOCK_TIMEOUT
 from .errors import BundleException
 from .events import BundleEvent, EventDispatcher, FrameworkEvent, ServiceEvent
 from .loader import Integration, load_bundle, unload_bundle
-from .loop import TaskRunner
+from .loop import TaskRunner, wait_for_tasks
 from .registry import ServiceRegistry
 
 
@@ -156,13 +156,11 @@ class Framework(Bundle):
         self._set_state(Bundle.STARTING)
         await self._fire_framework_event(BundleEvent.STARTING)
 
-        for bundle in self.__bundles.copy():
-            try:
-                await self.start_bundle(bundle)
-            except BundleException:
-                logger.exception(
-                    'Error raised while bundle starting: "%s"', bundle.name
-                )
+        tasks = [
+            asyncio.create_task(self.start_bundle(bundle))
+            for bundle in self.__bundles.copy()
+        ]
+        await wait_for_tasks(tasks)
 
         self._set_state(Bundle.ACTIVE)
         await self._fire_framework_event(BundleEvent.STARTED)
@@ -181,16 +179,12 @@ class Framework(Bundle):
 
         self._set_state(Bundle.STOPPING)
         await self._fire_framework_event(BundleEvent.STOPPING)
-        for bundle in self.__bundles[::-1]:
-            if self.state != Bundle.ACTIVE:
-                try:
-                    await self.stop_bundle(bundle)
-                except BundleException:
-                    logger.exception(
-                        "Error raised while bundle stopping %s", bundle.name
-                    )
-            else:
-                logger.debug("Bundle %s already stoped", bundle)
+        tasks = [
+            asyncio.create_task(self.stop_bundle(bundle))
+            for bundle in self.__bundles[::-1]
+        ]
+        await wait_for_tasks(tasks)
+
         self._set_state(Bundle.RESOLVED)
         await self._fire_framework_event(BundleEvent.STOPPED)
         await self.__runner.close()
@@ -205,6 +199,7 @@ class Framework(Bundle):
         if bundle.state in (Bundle.STARTING, Bundle.ACTIVE):
             return False
 
+        logger.debug("Start bundle %s", bundle)
         previous_state = bundle.state
         context = BundleContext(self, bundle, self.__events)
         bundle.set_context(context)
@@ -231,9 +226,8 @@ class Framework(Bundle):
         if bundle.state != Bundle.ACTIVE:
             return False
 
-        previous_state = bundle.state
-
         logger.debug("Stop bundle %s", bundle)
+        previous_state = bundle.state
         bundle._set_state(Bundle.STOPPING)
         await self._fire_bundle_event(BundleEvent.STOPPING, bundle)
         try:
@@ -250,7 +244,6 @@ class Framework(Bundle):
 
         for reference in self.__registry.get_bundle_references(bundle):
             self.__unregister_service(reference)
-
 
         bundle.remove_context()
         bundle._set_state(Bundle.RESOLVED)
@@ -296,6 +289,6 @@ def register_signal_handling(framework) -> None:
         logger.warning("Could not bind to SIGINT")
 
     try:
-        framework.loop.add_signal_handler(signal.SIGHUP, signal_handle, 543)
+        framework.loop.add_signal_handler(signal.SIGHUP, signal_handle, 100)
     except ValueError:
         logger.warning("Could not bind to SIGHUP")

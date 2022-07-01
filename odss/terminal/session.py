@@ -57,4 +57,6 @@ class Session:
                 message,
                 # completer=self.completer,
                 refresh_interval=0.5,
+                # set_exception_handler=False,
+                # handle_sigint=False
             )

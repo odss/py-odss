@@ -23,7 +23,6 @@ def is_callback(func: t.Callable[..., t.Any]) -> bool:
 BLOCK_LOG_TIMEOUT = 10
 
 
-
 class TaskPool:
     def __init__(self, max_workers: int = 8):
         self.max_workers = max_workers
@@ -37,7 +36,10 @@ class TaskPool:
     async def start(self):
         if self.loop_event.is_set():
             return
-        self.workers = [asyncio.create_task(self._run(id), name=f'Worker({id})') for i in range(self.max_workers)]
+        self.workers = [
+            asyncio.create_task(self._run(id), name=f"Worker({id})")
+            for i in range(self.max_workers)
+        ]
 
     async def stop(self):
         if self.loop_event.is_set():
@@ -72,6 +74,7 @@ class TaskPool:
             except Exception as ex:
                 logger.exception(ex)
 
+
 class TaskRunner:
     def __init__(self, loop):
         self.loop = loop
@@ -89,9 +92,9 @@ class TaskRunner:
     def create_task(self, target, *args) -> asyncio.Task:
         assert target
         if asyncio.iscoroutine(target):
-            return self.loop.create_task(target)
+            return asyncio.create_task(target)
         elif asyncio.iscoroutinefunction(target):
-            return self.loop.create_task(target(*args))
+            return asyncio.create_task(target(*args))
         elif inspect.ismethod(target):
             self.loop.call_soon(target, *args)
             return None
@@ -105,20 +108,21 @@ class TaskRunner:
     def create_job(self, target, *args) -> asyncio.Future:
         return self.loop.run_in_executor(None, target, *args)
 
-    async def wait_for_tasks(self, tasks) -> t.Awaitable:
-        start_time = monotonic()
+    # def run_in_future(self, target, *args) -> asyncio.Future:
+    #     future = self.loop.create_future()
+    #     try:
+    #         future.set_result(target(*args))
+    #     except Exception as ex:
+    #         future.set_exception(ex)
+    #     return future
 
-        pending = [task for task in tasks if task and not task.done()]
-        while pending:
-            _, pending = await asyncio.wait(pending, timeout=BLOCK_LOG_TIMEOUT)
-            wait_time = monotonic() - start_time
-            for task in pending:
-                logger.warning("Waited %s seconds for task: %s", wait_time, task)
 
-    def run_in_future(self, target, *args) -> asyncio.Future:
-        future = self.loop.create_future()
-        try:
-            future.set_result(target(*args))
-        except Exception as ex:
-            future.set_exception(ex)
-        return future
+async def wait_for_tasks(tasks) -> t.Awaitable:
+    start_time = monotonic()
+
+    pending = [task for task in tasks if task and not task.done()]
+    while pending:
+        _, pending = await asyncio.wait(pending, timeout=BLOCK_LOG_TIMEOUT)
+        wait_time = monotonic() - start_time
+        for task in pending:
+            logger.warning("Waited %s seconds for task: %s", wait_time, task)

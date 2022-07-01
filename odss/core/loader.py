@@ -17,6 +17,7 @@ import pkg_resources
 logger = logging.getLogger(__name__)
 
 pip_lock = asyncio.Lock()
+import_lock = asyncio.Lock()
 
 
 @dts.dataclass(frozen=True)
@@ -26,11 +27,13 @@ class Manifest:
 
 
 async def load_bundle(runner, name: str, path: str = None) -> "Integration":
-    manifest = await runner.create_job(find_manifest, name, path)
-    if manifest:
-        await process_requirements(runner, name, manifest.requirements)
+    async with import_lock:
+        manifest = await runner.create_job(find_manifest, name, path)
+    async with pip_lock:
+        await process_requirements(name, manifest.requirements)
 
-    integration = await runner.create_job(Integration.load_sync, name, path)
+    async with import_lock:
+        integration = await runner.create_job(Integration.load_sync, name, path)
     integration.manifest = manifest
     return integration
 
@@ -121,17 +124,14 @@ class Integration:
         return self.manifest.requirements
 
 
-async def process_requirements(runner, name, requirements):
-    async with pip_lock:
-        for requirement in requirements:
-            if is_installed(requirement):
-                continue
-            logger.info("Install package: %s for: %s", requirement, name)
-            status = await install_package(requirement)
-            if not status:
-                logger.error(
-                    "Problem with install package: %s for %s", requirement, name
-                )
+async def process_requirements(name, requirements):
+    for requirement in requirements:
+        if is_installed(requirement):
+            continue
+        logger.info("Install package: %s for: %s", requirement, name)
+        status = await install_package(requirement)
+        if not status:
+            logger.error("Problem with install package: %s for %s", requirement, name)
 
 
 def is_installed(package: str):

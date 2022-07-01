@@ -130,7 +130,7 @@ class ConfigurationDirectory:
         properties: TProperties,
         storage: IConfigurationStorage,
         factory_pid: str = None,
-        store: bool = False
+        store: bool = False,
     ) -> IConfiguration:
         if not pid:
             raise ValueError("Configuration with an empty PID")
