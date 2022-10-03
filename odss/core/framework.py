@@ -28,12 +28,12 @@ logger = logging.getLogger(__name__)
 class Framework(Bundle):
     def __init__(self, properties):
         super().__init__(self, 0, "odss.framework", Integration(sys.modules[__name__]))
-        self.loop: asyncio.events.AbstractEventLoop = asyncio.get_event_loop()
+        # self.loop: asyncio.events.AbstractEventLoop = asyncio.get_event_loop()
         self.__properties = properties
         self.__bundles = []
         self.__bundles_map = {}
         self.__next_id = 1
-        self.__runner = TaskRunner(self.loop)
+        self.__runner = TaskRunner()
         self.__events = EventDispatcher(self.__runner)
         self.__registry = ServiceRegistry(self)
 
@@ -47,6 +47,9 @@ class Framework(Bundle):
 
     def create_job(self, target, *args):
         return self.__runner.create_job(target, *args)
+
+    def enqueue_task(self, handler, *args):
+        self.__runner.enqueue_task(handler, *args)
 
     def get_bundles(self):
         return self.__bundles.copy()
@@ -92,7 +95,7 @@ class Framework(Bundle):
     def get_bundle_using_services(self, bundle):
         return self.__registry.get_bundle_using_services(bundle)
 
-    def register_service(self, bundle, target, service, properties=None):
+    async def register_service(self, bundle, target, service, properties=None):
         if bundle is None:
             raise BundleException("Invalid registration parameter: bundle")
         if target is None:
@@ -103,17 +106,17 @@ class Framework(Bundle):
         properties = properties.copy() if isinstance(properties, dict) else {}
 
         registration = self.__registry.register(bundle, target, service, properties)
-        self._fire_service_event(ServiceEvent.REGISTERED, registration.get_reference())
+        await self._fire_service_event(ServiceEvent.REGISTERED, registration.get_reference())
         return registration
 
-    def unregister_service(self, registration) -> None:
+    async def unregister_service(self, registration) -> None:
         reference = registration.get_reference()
-        self.__unregister_service(reference)
+        await self.__unregister_service(reference)
 
-    def __unregister_service(self, reference) -> None:
+    async def __unregister_service(self, reference) -> None:
         self.__registry.unregister(reference)
         event = ServiceEvent(ServiceEvent.UNREGISTERING, reference)
-        self.__events.services.fire_event(event)
+        await self.__events.services.fire_event(event)
 
     async def install_bundle(self, name, path=None) -> Bundle:
         for bundle in self.__bundles:
@@ -243,7 +246,7 @@ class Framework(Bundle):
             raise ex
 
         for reference in self.__registry.get_bundle_references(bundle):
-            self.__unregister_service(reference)
+            await self.__unregister_service(reference)
 
         bundle.remove_context()
         bundle._set_state(Bundle.RESOLVED)
@@ -267,8 +270,8 @@ class Framework(Bundle):
     async def _fire_bundle_event(self, kind, bundle):
         await self.__events.bundles.fire_event(BundleEvent(kind, bundle))
 
-    def _fire_service_event(self, kind, reference, properties=None):
-        self.__events.services.fire_event(ServiceEvent(kind, reference, properties))
+    async def _fire_service_event(self, kind, reference, properties=None):
+        await self.__events.services.fire_event(ServiceEvent(kind, reference, properties))
 
 
 def register_signal_handling(framework) -> None:

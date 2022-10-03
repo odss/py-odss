@@ -217,7 +217,7 @@ class ServiceListeners:
         self.by_interface.setdefault(interface, []).append(info)
         return True
 
-    def fire_event(self, event):
+    async def fire_event(self, event):
         properties = event.reference.get_properties()
         listeners = set()
         interfaces_with_none = tuple(properties[OBJECTCLASS]) + (None,)
@@ -227,20 +227,19 @@ class ServiceListeners:
                 listeners.update(self.by_interface[interface])
             except KeyError:
                 pass
-
         tasks = []
         for listener, interface, query in listeners:
             method = listener.service_changed
             if query.match(properties):
-                self.runner.enqueue_task(method, event)
+                tasks.append(self.runner.create_task(method, event))
             elif event.kind == ServiceEvent.MODIFIED:
                 previous = event.previous_properties
                 if query.match(previous):
                     event = ServiceEvent(
                         ServiceEvent.MODIFIED_ENDMATCH, event.reference, previous
                     )
-                    self.runner.enqueue_task(method, event)
-
+                    tasks.append(self.runner.create_task(method, event))
+        await wait_for_tasks(tasks)
 
 class EventDispatcher:
     def __init__(self, runner):
@@ -281,5 +280,5 @@ class EventDispatcher:
     async def fire_bundle_event(self, event):
         await self.bundles.fire_event(event)
 
-    def fire_service_event(self, event):
-        self.services.fire_event(event)
+    async def fire_service_event(self, event):
+        await self.services.fire_event(event)

@@ -12,7 +12,7 @@ class Activator:
 
     async def start(self, ctx):
         self.shell = BasicComands(ctx)
-        ctx.register_service(SERVICE_SHELL_COMMANDS, self.shell)
+        await ctx.register_service(SERVICE_SHELL_COMMANDS, self.shell)
 
     async def stop(self, ctx):
         pass
@@ -174,7 +174,7 @@ class BasicComands:
 
         session.write_line(f"Reload [Bundle id={bundle.id} name={bundle.name}]")
         await bundle.uninstall()
-        bundle = await self.ctx.get_framework().install_bundle(bundle.name)
+        bundle = await self.ctx.framework.install_bundle(bundle.name)
         await bundle.start()
 
     @command()

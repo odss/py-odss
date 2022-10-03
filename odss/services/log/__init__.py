@@ -27,8 +27,8 @@ class Activator:
     async def start(self, ctx):
         PID = "l"
         FPID = "sf"
-        ctx.register_service(IConfigurationManaged, Log(), {SERVICE_PID: PID})
-        ctx.register_service(
+        await ctx.register_service(IConfigurationManaged, Log(), {SERVICE_PID: PID})
+        await ctx.register_service(
             IConfigurationManagedFactory, SocketFactory(), {SERVICE_FACTORY_PID: FPID}
         )
         # ref = ctx.get_service_reference('odss.services.ConfigAdmin')

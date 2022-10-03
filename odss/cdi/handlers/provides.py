@@ -9,14 +9,14 @@ from ..interfaces import IHandler, IHandlerFactory
 
 
 class Activator:
-    def start(self, ctx: BundleContext) -> None:
+    async def start(self, ctx: BundleContext) -> None:
         properties = {PROP_HANDLER_NAME: HANDLER_PROVIDES}
-        self._registration = ctx.register_service(
+        self._registration = await ctx.register_service(
             IHandlerFactory, ProviderHandlerFactory(), properties
         )
 
-    def stop(self, ctx: BundleContext) -> None:
-        self._registration.unregister()
+    async def stop(self, ctx: BundleContext) -> None:
+        await self._registration.unregister()
         self._registration = None
 
 
@@ -34,21 +34,21 @@ class ProviderHandlerService(IHandler):
     def setup(self, component: ComponentManager):
         self._component = component
 
-    def post_validate(self):
-        self._register_service()
+    async def post_validate(self):
+        await self._register_service()
 
-    def pre_invalidate(self):
-        self._unregister_service()
+    async def pre_invalidate(self):
+        await self._unregister_service()
 
-    def _register_service(self):
+    async def _register_service(self):
         if self._registration is None:
             bundle_context = self._component.get_bundle_context()
             properties = self._component.context.properties
-            self._registration = bundle_context.register_service(
+            self._registration = await bundle_context.register_service(
                 self.specifications, self._component.get_instance(), properties
             )
 
-    def _unregister_service(self):
+    async def _unregister_service(self):
         if self._registration is not None:
-            self._registration.unregister()
+            await self._registration.unregister()
             self._registration = None

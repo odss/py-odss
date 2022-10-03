@@ -28,11 +28,11 @@ class Activator:
         await self.server.open()
         await self.rtracker.open()
         await self.mtracker.open()
-        self.reg = ctx.register_service(IHttpServer, self.server, {"type": "http"})
+        self.reg = await ctx.register_service(IHttpServer, self.server, {"type": "http"})
 
     async def stop(self, ctx):
         logger.info("Stop http server")
-        self.reg.unregister()
+        await self.reg.unregister()
         await self.mtracker.close()
         await self.rtracker.close()
         await self.server.close()

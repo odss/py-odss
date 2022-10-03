@@ -31,8 +31,6 @@ async def test_simple_tracker(framework):
 
     await bundle.stop()
 
-    await asyncio.sleep(0.01)
-
     assert len(tracker.get_service_references()) == 0
 
     await tracker.close()
@@ -60,8 +58,6 @@ async def test_listener_tracker(framework):
     assert tracker.events[1][0] == "on_adding_service"
 
     await bundle.stop()
-
-    await asyncio.sleep(0.01)
 
     assert len(tracker.events) == 4
     assert tracker.events[2][0] == "on_removed_service"

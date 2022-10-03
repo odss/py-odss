@@ -71,7 +71,7 @@ class IBundleContext:
     async def install_bundle(self, name, path=None):
         pass
 
-    def register_service(self, clazz, service, properties=None):
+    async def register_service(self, clazz, service, properties=None):
         pass
 
     def add_framework_listener(self, listener):

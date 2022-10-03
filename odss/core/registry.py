@@ -217,10 +217,10 @@ class ServiceRegistration:
         self.__reference = reference
         self.__properties = properties
 
-    def unregister(self):
-        self.__framework.unregister_service(self)
+    async def unregister(self):
+        await self.__framework.unregister_service(self)
 
-    def set_properties(self, properties):
+    async def set_properties(self, properties):
         for forbidden_key in [OBJECTCLASS, SERVICE_ID, SERVICE_BUNDLE_ID]:
             try:
                 del properties[forbidden_key]
@@ -231,7 +231,7 @@ class ServiceRegistration:
         self.__properties.update(properties)
         self.__reference.check_sort_update()
 
-        self.__framework._fire_service_event(
+        await self.__framework._fire_service_event(
             ServiceEvent.MODIFIED, self.__reference, previous
         )
 

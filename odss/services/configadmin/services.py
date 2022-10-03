@@ -4,6 +4,7 @@ from re import I
 import uuid
 import typing as t
 import collections
+from odss.core.loop import wait_for_tasks
 
 from odss.core.query import create_query
 from .consts import SERVICE_PID, SERVICE_FACTORY_PID
@@ -348,19 +349,23 @@ class ConfigurationAdmin(IConfigurationAdmin):
         self, factory_pid: str, factory: IConfigurationManagedFactory
     ):
         configurations = self._directory.get_factory_configurations(factory_pid)
+        tasks = []
         for configuration in configurations:
             if configuration.is_valid():
-                result = factory.updated(
+                task = factory.updated(
                     configuration.get_pid(), configuration.get_properties()
                 )
-                if asyncio.iscoroutine(result):
-                    await result
+                if asyncio.iscoroutine(task):
+                    tasks.append(asyncio.create_task(task))
+        await wait_for_tasks(tasks)
 
     async def __notify_pids(self, pids: t.List[str]) -> None:
+        tasks = []
         for pid in pids:
             configuration = await self.get_configuration(pid)
             if configuration.is_valid():
-                await self.__update(configuration)
+                tasks.append(asyncio.create_task(self.__update(configuration)))
+        await wait_for_tasks(tasks)
 
     async def __notify_factories_update(
         self,
@@ -368,20 +373,20 @@ class ConfigurationAdmin(IConfigurationAdmin):
         pid: str,
         properties: TProperties,
     ):
-        for factory in factories:
-            await factory.updated(pid, properties)
+        tasks = [
+            asyncio.create_task(factory.updated(pid, properties))
+            for factory in factories
+        ]
+        await wait_for_tasks(tasks)
 
     async def __notify_factories_remove(
         self, factories: t.Iterable[IConfigurationManagedFactory], pid: str
     ):
-        for factory in factories:
-            await factory.removed(pid)
+        tasks = [asyncio.create_task(factory.removed(pid)) for factory in factories]
+        await wait_for_tasks(tasks)
 
     async def __notify_services(
         self, services: IConfigurationManaged, properties: t.Optional[TProperties]
     ):
-        for service in services:
-
-            result = service.updated(properties)
-            if asyncio.iscoroutine(result):
-                await result
+        tasks = [asyncio.create_task(service.updated(properties)) for service in services]
+        await wait_for_tasks(tasks)

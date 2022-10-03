@@ -14,11 +14,11 @@ class Activator:
         storage = JsonFileStorage()
         await storage.open()
 
-        ctx.register_service(IConfigurationAdmin, self.admin)
+        await ctx.register_service(IConfigurationAdmin, self.admin)
         # ctx.register_service(IConfigurationStorage, MemoryStorage())
 
-        ctx.register_service(IConfigurationStorage, storage)
-        ctx.register_service(SERVICE_SHELL_COMMANDS, Commands(self.admin))
+        await ctx.register_service(IConfigurationStorage, storage)
+        await ctx.register_service(SERVICE_SHELL_COMMANDS, Commands(self.admin))
         self.trackers = [
             StorageTracker(ctx, self.admin),
             ManagedTracker(ctx, self.admin),

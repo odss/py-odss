@@ -1,7 +1,7 @@
 # odss
 ## Open Dynamic Services
 
-Becuse I like OSGi (The Dynamic Module System for Java)[https://www.osgi.org/] idea, and python IPOPO [https://github.com/tcalmant/ipopo], I try to implement it async version.
+Becuse I like OSGi (The Dynamic Module System for Java)[https://www.osgi.org/] idea, and python IPOPO [https://github.com/tcalmant/ipopo], I try to implement the async way.
 
 
 ### Framework
@@ -24,7 +24,7 @@ class IManager:
 ```
 > bundle.py
 ```python
-from odss.core.bundle import IBundleContext
+from odss.framework.bundle import IBundleContext
 
 from .api import IService, IStorage, IListener, IManager
 
@@ -41,7 +41,7 @@ class Activator:
 
 > main.py
 ```python
-from odss.core import create_framework
+from odss.framework import create_framework
 
 # ...
 framework = await create_framework()
@@ -58,48 +58,48 @@ await framework.uninstall_bundle()
 ## CDI - Component Dependency injection
 More easy way to setup dependency (iPOPO like)
 ```python
-from odss.cdi.decorators import Component, Provides, Bind, Unbind, Validate, Invalidate
+from odss import cdi
 from .interfaces import IService, IStorage, IListener, IManager
 
 
-@Component
-@Provides(IService)
+@cdi.component
+@cdi.provides(IService)
 class MyService:
     pass
 
 
-@Component
-@Provides(IStorage)
+@cdi.component
+@cdi.provides(IStorage)
 class MyStorage:
     pass
 
 
-@Component
-@Provides(IListener)
+@cdi.component
+@cdi.provides(IListener)
 class MyListener:
     pass
 
 
-@Component
-@Provides(IManager)
+@cdi.component
+@cdi.provides(IManager)
 class ManagerComponent:
     def __init__(self, service: IService, storage: IStorage):
         self.service = service
         self.storage = storage
 
-    @Bind
+    @cdi.bind
     def add_listener(self, listener: IListener):
         # ...
 
-    @Unbind
+    @cdi.unbind
     def remove_listener(self, listener: IListener):
         # ...
 
-    @Validate
+    @cdi.validate
     def validate(self, ctx):
         # ...
 
-    @Invalidate
+    @cdi.invalidate
     def invalidate(self, ctx):
         # ...
 ```

@@ -72,7 +72,6 @@ async def test_priovides_services(framework):
     assert len(refs) == 1
 
     await bundle.stop()
-    await asyncio.sleep(0)
 
     refs = framework.find_service_references(IService)
     assert len(refs) == 0

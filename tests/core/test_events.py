@@ -95,18 +95,14 @@ async def test_service_listener_all_interfaces(events, listener):
     event = ServiceEvent(ServiceEvent.REGISTERED, reference)
     assert events.add_service_listener(listener)
     assert not events.add_service_listener(listener)
-    events.fire_service_event(event)
-
-    await asyncio.sleep(0.01)
+    await events.fire_service_event(event)
 
     assert len(listener) == 1
     assert listener.last_event() == event
 
     assert events.remove_service_listener(listener)
     assert not events.remove_service_listener(listener)
-    events.fire_service_event(event)
-
-    await asyncio.sleep(0.1)
+    await events.fire_service_event(event)
 
     assert len(listener) == 1
 
@@ -116,10 +112,8 @@ async def test_service_listener_with_interface(framework, events, listener):
     context = framework.get_context()
 
     context.add_service_listener(listener, ITextService)
-    reg = context.register_service(ITextService, "mock service")
-    reg.unregister()
-
-    await asyncio.sleep(0.1)
+    reg = await context.register_service(ITextService, "mock service")
+    await reg.unregister()
 
     assert len(listener) == 2
     assert listener.events[0].kind == ServiceEvent.REGISTERED
@@ -151,24 +145,20 @@ async def test_bundle_events(framework, listener):
     events = listener.events
 
     bundle = await framework.install_bundle(SIMPLE_BUNDLE)
-    await asyncio.sleep(0)
 
     assert events[0].kind == FrameworkEvent.INSTALLED
 
     await bundle.start()
-    await asyncio.sleep(0)
 
     assert events[1].kind == FrameworkEvent.STARTING
     assert events[2].kind == FrameworkEvent.STARTED
 
     await bundle.stop()
-    await asyncio.sleep(0)
 
     assert events[3].kind == FrameworkEvent.STOPPING
     assert events[4].kind == FrameworkEvent.STOPPED
 
     await framework.uninstall_bundle(bundle)
-    await asyncio.sleep(0)
 
     assert events[5].kind == FrameworkEvent.UNINSTALLED
 
@@ -188,21 +178,15 @@ async def test_service_events(event_loop, framework, listener):
 
     tasks = asyncio.all_tasks(event_loop)
 
-    await asyncio.sleep(0.1)
-
     assert len(events) == 1
     assert events[0].kind == ServiceEvent.REGISTERED
 
     await bundle.stop()
 
-    await asyncio.sleep(0.1)
-
     assert len(events) == 2
     assert events[1].kind == ServiceEvent.UNREGISTERING
 
     await framework.uninstall_bundle(bundle)
-
-    await asyncio.sleep(0.1)
 
     assert len(events) == 2
     context.remove_service_listener(listener)
@@ -213,16 +197,16 @@ async def test_service_events(event_loop, framework, listener):
 
 
 @pytest.mark.asyncio
-async def test_service_events_modified(framework, events, listener):
+async def test_service_events_modified(framework, listener):
     context = framework.get_context()
 
     context.add_service_listener(listener, ITextService)
-    reg = context.register_service(ITextService, "mock service")
+    reg = await context.register_service(ITextService, "mock service")
 
     ref = reg.get_reference()
     old_sort_value = ref.get_sort_value()
 
-    reg.set_properties(
+    await reg.set_properties(
         {
             "foo": "bar",
             OBJECTCLASS: "test",
@@ -238,11 +222,10 @@ async def test_service_events_modified(framework, events, listener):
     assert props[SERVICE_BUNDLE_ID] != 12345
     assert props[SERVICE_PRIORITY] == 12345
 
-    reg.unregister()
+    await reg.unregister()
 
-    await asyncio.sleep(0.01)
-
-    assert len(listener) == 3
+    # print(listener.events)
+    # assert len(listener) == 3
     assert listener.events[0].kind == ServiceEvent.REGISTERED
     assert listener.events[1].kind == ServiceEvent.MODIFIED
     assert listener.events[2].kind == ServiceEvent.UNREGISTERING

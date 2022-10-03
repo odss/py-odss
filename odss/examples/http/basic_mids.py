@@ -49,14 +49,14 @@ async def middleware3(ctx, handler):
 
 class Activator:
     async def start(self, ctx):
-        ctx.register_service(
+        await ctx.register_service(
             IHttpMiddlewareService, middleware3, {SERVICE_PRIORITY: 30}
         )
-        ctx.register_service(
+        await ctx.register_service(
             IHttpMiddlewareService, middleware2, {SERVICE_PRIORITY: 10}
         )
-        ctx.register_service(IHttpMiddlewareService, middleware1, {SERVICE_PRIORITY: 5})
-        ctx.register_service(
+        await ctx.register_service(IHttpMiddlewareService, middleware1, {SERVICE_PRIORITY: 5})
+        await ctx.register_service(
             IHttpMiddlewareService, error_middleware, {SERVICE_PRIORITY: 1}
         )
         # await ctx.register_service(IHttpMiddlewareService, middleware1)

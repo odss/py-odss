@@ -76,8 +76,7 @@ class TaskPool:
 
 
 class TaskRunner:
-    def __init__(self, loop):
-        self.loop = loop
+    def __init__(self):
         self.task_pool = TaskPool()
 
     async def open(self):
@@ -96,7 +95,7 @@ class TaskRunner:
         elif asyncio.iscoroutinefunction(target):
             return asyncio.create_task(target(*args))
         elif inspect.ismethod(target):
-            self.loop.call_soon(target, *args)
+            asyncio.get_event_loop().call_soon(target, *args)
             return None
         raise TypeError(
             "Incorrect type of target. Excpected function, coroutine or coroutinefunction"
@@ -106,7 +105,7 @@ class TaskRunner:
         return [self.create_task(target, *args) for target, *args in targets]
 
     def create_job(self, target, *args) -> asyncio.Future:
-        return self.loop.run_in_executor(None, target, *args)
+        return asyncio.get_event_loop().run_in_executor(None, target, *args)
 
     # def run_in_future(self, target, *args) -> asyncio.Future:
     #     future = self.loop.create_future()

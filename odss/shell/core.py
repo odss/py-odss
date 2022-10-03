@@ -11,7 +11,7 @@ class Activator:
         self.shell = Shell(ctx, bind_basic=True)
         self.tracker = CommandTracker(ctx, self.shell)
 
-        ctx.register_service(SERVICE_SHELL, self.shell)
+        await ctx.register_service(SERVICE_SHELL, self.shell)
         await self.tracker.open()
 
     async def stop(self, ctx):

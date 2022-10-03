@@ -12,12 +12,12 @@ from ..interfaces import IHandler, IHandlerFactory
 class Activator:
     async def start(self, ctx: BundleContext) -> None:
         self._registrations = [
-            ctx.register_service(
+            await ctx.register_service(
                 IHandlerFactory,
                 RequiresHandlerFactory(),
                 {PROP_HANDLER_NAME: HANDLER_REQUIRES},
             ),
-            ctx.register_service(
+            await ctx.register_service(
                 IHandlerFactory,
                 ConstructorRequiresHandlerFactory(),
                 {PROP_HANDLER_NAME: HANDLER_CONSTRUCTOR_REQUIRES},
@@ -26,7 +26,7 @@ class Activator:
 
     async def stop(self, ctx: BundleContext) -> None:
         for registration in self._registrations:
-            registration.unregister()
+            await registration.unregister()
         self._registrations = None
 
 

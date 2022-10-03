@@ -148,8 +148,8 @@ class BundleContext(IBundleContext):
     async def install_bundle(self, name, path=None):
         return await self.__framework.install_bundle(name, path)
 
-    def register_service(self, clazz, service, properties=None):
-        return self.__framework.register_service(
+    async def register_service(self, clazz, service, properties=None):
+        return await self.__framework.register_service(
             self.__bundle, clazz, service, properties
         )
 
