@@ -241,6 +241,7 @@ class ServiceListeners:
                     tasks.append(self.runner.create_task(method, event))
         await wait_for_tasks(tasks)
 
+
 class EventDispatcher:
     def __init__(self, runner):
         self.runner = runner

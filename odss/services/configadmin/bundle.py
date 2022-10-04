@@ -79,3 +79,11 @@ class Commands:
         """
         config = await self.admin.get_configuration(pid)
         await config.update({name: value})
+
+    @command("reload", "cm")
+    async def cm_reload(self, session, pid):
+        """
+        Reload selected pid
+        """
+        config = await self.admin.get_configuration(pid)
+        await config.reload()

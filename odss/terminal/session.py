@@ -58,5 +58,5 @@ class Session:
                 # completer=self.completer,
                 refresh_interval=0.5,
                 # set_exception_handler=False,
-                # handle_sigint=False
+                handle_sigint=False,
             )

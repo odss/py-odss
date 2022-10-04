@@ -66,7 +66,7 @@ class Shell:
 
         def shutdown():
             framework = self.ctx.get_framework()
-            framework.create_task(framework.stop)
+            asyncio.create_task(framework.stop())
 
         asyncio.get_event_loop().call_soon(shutdown)
 

@@ -50,6 +50,9 @@ class InteractiveConsole(ServiceTracker):
 
     async def run(self):
         while self.shell:
+            # try:
             line = await self.session.readline()
             if self.shell:
                 await self.shell.execute(line, self.session)
+            # except KeyboardInterrupt:
+            #     break

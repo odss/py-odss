@@ -4,9 +4,10 @@ from re import I
 import uuid
 import typing as t
 import collections
-from odss.core.loop import wait_for_tasks
 
+from odss.core.loop import wait_for_tasks
 from odss.core.query import create_query
+
 from .consts import SERVICE_PID, SERVICE_FACTORY_PID
 
 from .abc import (
@@ -388,5 +389,7 @@ class ConfigurationAdmin(IConfigurationAdmin):
     async def __notify_services(
         self, services: IConfigurationManaged, properties: t.Optional[TProperties]
     ):
-        tasks = [asyncio.create_task(service.updated(properties)) for service in services]
+        tasks = [
+            asyncio.create_task(service.updated(properties)) for service in services
+        ]
         await wait_for_tasks(tasks)

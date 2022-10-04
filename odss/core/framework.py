@@ -106,7 +106,9 @@ class Framework(Bundle):
         properties = properties.copy() if isinstance(properties, dict) else {}
 
         registration = self.__registry.register(bundle, target, service, properties)
-        await self._fire_service_event(ServiceEvent.REGISTERED, registration.get_reference())
+        await self._fire_service_event(
+            ServiceEvent.REGISTERED, registration.get_reference()
+        )
         return registration
 
     async def unregister_service(self, registration) -> None:
@@ -171,7 +173,6 @@ class Framework(Bundle):
         if attach_signals:
             self._stopped = asyncio.Event()
             register_signal_handling(self)
-
             await self._stopped.wait()
 
     async def stop(self) -> None:
@@ -187,7 +188,6 @@ class Framework(Bundle):
             for bundle in self.__bundles[::-1]
         ]
         await wait_for_tasks(tasks)
-
         self._set_state(Bundle.RESOLVED)
         await self._fire_framework_event(BundleEvent.STOPPED)
         await self.__runner.close()
@@ -243,7 +243,7 @@ class Framework(Bundle):
         except Exception as ex:
             bundle._set_state(previous_state)
             logger.warning("Problem with stop bundle: {0} - {1}".format(bundle, ex))
-            raise ex
+            # raise ex
 
         for reference in self.__registry.get_bundle_references(bundle):
             await self.__unregister_service(reference)
@@ -271,27 +271,32 @@ class Framework(Bundle):
         await self.__events.bundles.fire_event(BundleEvent(kind, bundle))
 
     async def _fire_service_event(self, kind, reference, properties=None):
-        await self.__events.services.fire_event(ServiceEvent(kind, reference, properties))
+        await self.__events.services.fire_event(
+            ServiceEvent(kind, reference, properties)
+        )
 
 
 def register_signal_handling(framework) -> None:
+    loop = asyncio.get_event_loop()
+
     def signal_handle(exit_code: int) -> None:
-        framework.loop.remove_signal_handler(signal.SIGTERM)
-        framework.loop.remove_signal_handler(signal.SIGINT)
-        framework.loop.remove_signal_handler(signal.SIGHUP)
+        print("catch exit singal", exit_code)
+        loop.remove_signal_handler(signal.SIGTERM)
+        loop.remove_signal_handler(signal.SIGINT)
+        loop.remove_signal_handler(signal.SIGHUP)
         asyncio.create_task(framework.stop())
 
     try:
-        framework.loop.add_signal_handler(signal.SIGTERM, signal_handle, 0)
+        loop.add_signal_handler(signal.SIGTERM, signal_handle, 0)
     except ValueError:
         logger.warning("Could not bind to SIGTERM")
 
     try:
-        framework.loop.add_signal_handler(signal.SIGINT, signal_handle, 0)
+        loop.add_signal_handler(signal.SIGINT, signal_handle, 0)
     except ValueError:
         logger.warning("Could not bind to SIGINT")
 
     try:
-        framework.loop.add_signal_handler(signal.SIGHUP, signal_handle, 100)
+        loop.add_signal_handler(signal.SIGHUP, signal_handle, 100)
     except ValueError:
         logger.warning("Could not bind to SIGHUP")

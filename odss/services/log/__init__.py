@@ -8,7 +8,7 @@ from odss.services.configadmin.consts import SERVICE_FACTORY_PID, SERVICE_PID
 
 class Log:
     async def updated(self, props):
-        print(f"Log.updateds({props})")
+        print(f"Log::updated({props})")
         if props:
             level = props.get("level")
             if level:

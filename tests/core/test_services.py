@@ -135,7 +135,7 @@ async def test_service_bundle_using(framework):
 @pytest.mark.asyncio
 async def test_unregister_service(framework):
     context = framework.get_context()
-    registration = await  context.register_service("foo", "bar")
+    registration = await context.register_service("foo", "bar")
 
     reference = context.get_service_reference("foo")
     assert reference is not None

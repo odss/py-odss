@@ -94,20 +94,20 @@ async def setup_and_run_odss(config):
         await framework.install_bundle(bundle_name)
     try:
         await framework.start(True)
+    except KeyboardInterrupt:
+        pass
     finally:
-        framework.loop.create_task(framework.stop())
+        asyncio.create_task(framework.stop())
 
 
 def main():
     args = get_arguments()
     config = handle_args(args)
-    try:
-        asyncio.run(
-            setup_and_run_odss(config),
-            # debug=config.debug
-        )
-    except KeyboardInterrupt:
-        pass
+    # try:
+    asyncio.run(setup_and_run_odss(config), debug=True)
+    # except KeyboardInterrupt:
+    #     print('error KeyboardInterrupt')
+    #     pass
 
 
 if __name__ == "__main__":
