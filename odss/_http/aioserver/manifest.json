@@ -1,3 +1,0 @@
-{
-    "requirements": ["aiohttp[speedups]==3.8.1"]
-}
