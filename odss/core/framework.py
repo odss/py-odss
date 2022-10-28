@@ -8,6 +8,7 @@ import asyncio
 import logging
 import signal
 import sys
+import typing as t
 
 import async_timeout
 
@@ -16,7 +17,7 @@ from .consts import ACTIVATOR_CLASS, BLOCK_TIMEOUT
 from .errors import BundleException
 from .events import BundleEvent, EventDispatcher, FrameworkEvent, ServiceEvent
 from .loader import Integration, load_bundle, unload_bundle
-from .loop import TaskRunner, wait_for_tasks
+from .loop import TaskRunner, create_job, create_task, wait_for_tasks
 from .registry import ServiceRegistry
 
 
@@ -36,17 +37,17 @@ class Framework(Bundle):
         self.__runner = TaskRunner()
         self.__events = EventDispatcher(self.__runner)
         self.__registry = ServiceRegistry(self)
-
         self.__activators = {}
+        self.__pending_tasks: list[asyncio.Future[t.Any]] = []
 
         contex = BundleContext(self, self, self.__events)
         self.set_context(contex)
 
     def create_task(self, target, *args):
-        return self.__runner.create_task(target, *args)
+        return create_task(target, *args)
 
     def create_job(self, target, *args):
-        return self.__runner.create_job(target, *args)
+        return create_job(target, *args)
 
     def enqueue_task(self, handler, *args):
         self.__runner.enqueue_task(handler, *args)
@@ -218,7 +219,7 @@ class Framework(Bundle):
                         await target
         except Exception as ex:
             bundle._set_state(previous_state)
-            logger.warning("Problem with start bundle: {0} - {1}".format(bundle, ex))
+            logger.exception("Problem with start bundle: {0}".format(bundle))
             raise ex
 
         bundle._set_state(Bundle.ACTIVE)
@@ -242,8 +243,8 @@ class Framework(Bundle):
                         await target
         except Exception as ex:
             bundle._set_state(previous_state)
-            logger.warning("Problem with stop bundle: {0} - {1}".format(bundle, ex))
-            # raise ex
+            logger.exception("Problem with stop bundle: {0}".format(bundle))
+            raise ex
 
         for reference in self.__registry.get_bundle_references(bundle):
             await self.__unregister_service(reference)

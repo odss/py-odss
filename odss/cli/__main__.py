@@ -2,7 +2,7 @@ import argparse
 import asyncio
 import logging
 
-from odss import consts
+from odss import __version__
 from odss.core import Framework
 from odss.shell.utils import make_ascii_table
 
@@ -20,7 +20,7 @@ def set_uv_loop() -> None:
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="ODSS :: OSGi in python async version")
-    parser.add_argument("--version", action="version", version=consts.__version__)
+    parser.add_argument("--version", action="version", version=__version__)
 
     group = parser.add_argument_group("Framework options")
     group.add_argument(
@@ -49,11 +49,16 @@ def get_arguments() -> argparse.Namespace:
         action="store_true",
         help="Set loggers to DEBUG level",
     )
-
+    group.add_argument(
+        "--debug-loop",
+        action="store_true",
+        help="Set debug to loop",
+    )
     return parser.parse_args()
 
 
 def handle_args(args):
+    print(args)
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
 
     set_uv_loop()
@@ -92,6 +97,7 @@ async def setup_and_run_odss(config):
     # ])
     for bundle_name in config.bundles:
         await framework.install_bundle(bundle_name)
+
     try:
         await framework.start(True)
     except KeyboardInterrupt:
@@ -103,11 +109,7 @@ async def setup_and_run_odss(config):
 def main():
     args = get_arguments()
     config = handle_args(args)
-    # try:
     asyncio.run(setup_and_run_odss(config), debug=True)
-    # except KeyboardInterrupt:
-    #     print('error KeyboardInterrupt')
-    #     pass
 
 
 if __name__ == "__main__":

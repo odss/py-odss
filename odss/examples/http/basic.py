@@ -3,14 +3,15 @@ from odss.cdi.decorators import (
     component,
     provides,
 )
-from satto.http.api import get, post, IHttpContext, IHttpRouteService, route
+from satto.http.api import view, get, post, IHttpContext, IHttpRouteService
 
 
-@component
-@provides(IHttpRouteService)
+# @component
+# @provides(IHttpRouteService)
+@view("/auth")
 class AuthEndpoint:
-    def __init__(self, foobar: "FooBar"):
-        print("__init__", foobar)
+    def __init__(self):
+        print("__init__")
 
     @get("/users")
     def get_users(self, ctx: IHttpContext):
@@ -29,6 +30,5 @@ class AuthEndpoint:
 
 class Activator:
     async def start(self, ctx: IBundleContext):
-        pass
-        # ctx.register_service(IHttpRouteService, Auth())
+        await ctx.register_service(IHttpRouteService, AuthEndpoint(), {"scope": "auth"})
         # await ctx.register_service(IHttpRouteService, Auth())

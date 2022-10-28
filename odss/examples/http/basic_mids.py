@@ -55,7 +55,9 @@ class Activator:
         await ctx.register_service(
             IHttpMiddlewareService, middleware2, {SERVICE_PRIORITY: 10}
         )
-        await ctx.register_service(IHttpMiddlewareService, middleware1, {SERVICE_PRIORITY: 5})
+        await ctx.register_service(
+            IHttpMiddlewareService, middleware1, {SERVICE_PRIORITY: 5}
+        )
         await ctx.register_service(
             IHttpMiddlewareService, error_middleware, {SERVICE_PRIORITY: 1}
         )

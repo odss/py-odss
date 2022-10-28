@@ -6,18 +6,17 @@ from . import nodes
 # flake8: noqa: C901
 def parse_query(query):
     query = query.strip()
-    size = len(query)
     if not query:
         raise ValueError('Incorect query: "{}"'.format(query))
 
     if query[0] != "(" and query[-1] != ")":
         query = "({})".format(query)
-        size = len(query)
 
     stack = []
     pos = 0
     is_escaped = False
     sf = None
+    size = len(query)
     while pos < size:
         if is_escaped:
             is_escaped = False

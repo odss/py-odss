@@ -1,6 +1,6 @@
 import logging
 
-from ..core.consts import OBJECTCLASS, SERVICE_ID, SERVICE_PRIORITY
+from ..core.consts import OBJECTCLASS, SERVICE_ID, SERVICE_PRIORITY, SERVICE_BUNDLE_ID
 from .consts import SERVICE_SHELL_COMMANDS
 from .decorators import command
 from .utils import bundle_state_name, make_ascii_table
@@ -94,6 +94,7 @@ class BasicComands:
         if not ref:
             return f"Service not found: {service_id}"
 
+        excludes = (SERVICE_ID, SERVICE_PRIORITY, OBJECTCLASS, SERVICE_BUNDLE_ID)
         props = ref.get_properties()
         lines = [
             "ID...........: {0}".format(props[SERVICE_ID]),
@@ -102,16 +103,20 @@ class BasicComands:
             "Bundle.......: {0}".format(ref.get_bundle()),
             "Properties...:",
         ]
-
-        props = sorted(props.items())
+        props = sorted(
+            (key, value) for key, value in props.items() if key not in excludes
+        )
         max_size = max([len(r[0]) for r in props], default=0)
         prop_format = f"    {{0:>{max_size}}} = {{1}}"
-        for key, value in props:
-            lines.append(prop_format.format(key, value))
+        lines.extend([prop_format.format(key, value) for key, value in props])
 
         lines.append("Bundles using this service:")
-        for bundle in ref.get_using_bundles():
-            lines.append(f"    {bundle}")
+        bundles = ref.get_using_bundles()
+        if len(bundles):
+            for bundle in ref.get_using_bundles():
+                lines.append(f"    {bundle}")
+        else:
+            lines.append("    n/a")
 
         return lines
 

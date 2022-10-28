@@ -5,7 +5,7 @@ from .consts import OBJECTCLASS
 from .errors import BundleException
 from .query import create_query
 from .utils import class_name
-from .loop import wait_for_tasks
+from .loop import create_task, wait_for_tasks
 
 logger = logging.getLogger(__name__)
 
@@ -169,7 +169,7 @@ class Listeners:
         methods = [
             getattr(listener, self.listener_method) for listener in self.listeners
         ]
-        tasks = [self.runner.create_task(method, event) for method in methods]
+        tasks = [create_task(method, event) for method in methods]
         await wait_for_tasks(tasks)
 
 
@@ -231,14 +231,14 @@ class ServiceListeners:
         for listener, interface, query in listeners:
             method = listener.service_changed
             if query.match(properties):
-                tasks.append(self.runner.create_task(method, event))
+                tasks.append(create_task(method, event))
             elif event.kind == ServiceEvent.MODIFIED:
                 previous = event.previous_properties
                 if query.match(previous):
                     event = ServiceEvent(
                         ServiceEvent.MODIFIED_ENDMATCH, event.reference, previous
                     )
-                    tasks.append(self.runner.create_task(method, event))
+                    tasks.append(create_task(method, event))
         await wait_for_tasks(tasks)
 
 

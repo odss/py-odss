@@ -1,3 +1,5 @@
+from pathlib import Path
+from odss.core import IBundleContext
 from odss.shell.decorators import command
 from odss.shell.consts import SERVICE_SHELL_COMMANDS
 from odss.shell.utils import make_ascii_table
@@ -9,16 +11,28 @@ from .trackers import StorageTracker, ManagedTracker, ManagedFactoryTracker
 
 
 class Activator:
-    async def start(self, ctx):
+    def __init__(self) -> None:
+        self.regs = []
+        self.trackers = []
+        self.admin = None
+
+    async def start(self, ctx: IBundleContext):
         self.admin = ConfigurationAdmin()
-        storage = JsonFileStorage()
-        await storage.open()
+        props = ctx.get_property("odss.services.configadmin") or {}
 
-        await ctx.register_service(IConfigurationAdmin, self.admin)
-        # ctx.register_service(IConfigurationStorage, MemoryStorage())
+        if "storage.type" in props:
+            if props["storage.type"] == "memory":
+                await self.admin.add_storage(MemoryStorage())
+            elif props["storage.type"] == "json":
+                storage = JsonFileStorage(Path(props.get("storage.path")))
+                await storage.open()
+                await self.admin.add_storage(storage)
 
-        await ctx.register_service(IConfigurationStorage, storage)
-        await ctx.register_service(SERVICE_SHELL_COMMANDS, Commands(self.admin))
+        self.regs = [
+            await ctx.register_service(IConfigurationAdmin, self.admin),
+            await ctx.register_service(SERVICE_SHELL_COMMANDS, Commands(self.admin)),
+        ]
+
         self.trackers = [
             StorageTracker(ctx, self.admin),
             ManagedTracker(ctx, self.admin),
@@ -30,6 +44,11 @@ class Activator:
     async def stop(self, ctx):
         for tracker in self.trackers:
             await tracker.close()
+        self.trackers = []
+
+        for reg in self.regs:
+            await reg.unregister()
+        self.regs = []
         self.admin = None
 
 

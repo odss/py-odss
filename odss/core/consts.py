@@ -6,4 +6,4 @@ FRAMEWORK_UUID = "__framework_uuid__"
 
 ACTIVATOR_CLASS = "Activator"
 
-BLOCK_TIMEOUT = 10.0
+BLOCK_TIMEOUT = 1000.0

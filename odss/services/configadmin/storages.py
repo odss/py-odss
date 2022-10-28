@@ -59,7 +59,6 @@ class JsonFileStorage(IConfigurationStorage):
         """
         Load properties from store
         """
-        print("load", pid)
         async with aopen(self._get_file(pid), mode="r") as f:
             data = await f.read()
             return json.loads(data)

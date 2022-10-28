@@ -4,6 +4,7 @@ from re import I
 import uuid
 import typing as t
 import collections
+import logging
 
 from odss.core.loop import wait_for_tasks
 from odss.core.query import create_query
@@ -19,6 +20,8 @@ from .abc import (
     IConfigurationManagedFactory,
     TProperties,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class Configuration(IConfiguration):
@@ -216,6 +219,7 @@ class ConfigurationAdmin(IConfigurationAdmin):
     ) -> None:
         if not pid:
             raise ValueError("Managed without PID")
+        logger.debug("Add managed service: %s", pid)
 
         self.__managed[pid].add(service)
         if self._storages:
@@ -226,6 +230,8 @@ class ConfigurationAdmin(IConfigurationAdmin):
     ) -> None:
         if not pid:
             raise ValueError("Managed without PID")
+
+        logger.debug("Remove managed service: %s", pid)
 
         self.__managed[pid].remove(service)
         if not self.__managed[pid]:
@@ -309,6 +315,7 @@ class ConfigurationAdmin(IConfigurationAdmin):
         """
         Notify to update all related managed services
         """
+
         pid = configuration.get_pid()
         factory_pid = configuration.get_factory_pid()
         properties = configuration.get_properties()
@@ -350,23 +357,27 @@ class ConfigurationAdmin(IConfigurationAdmin):
         self, factory_pid: str, factory: IConfigurationManagedFactory
     ):
         configurations = self._directory.get_factory_configurations(factory_pid)
-        tasks = []
         for configuration in configurations:
             if configuration.is_valid():
-                task = factory.updated(
-                    configuration.get_pid(), configuration.get_properties()
-                )
-                if asyncio.iscoroutine(task):
-                    tasks.append(asyncio.create_task(task))
-        await wait_for_tasks(tasks)
+                try:
+                    task = factory.updated(
+                        configuration.get_pid(), configuration.get_properties()
+                    )
+                    if asyncio.iscoroutine(task):
+                        await task
+                except Exception as ex:
+                    logger.exception(ex)
 
     async def __notify_pids(self, pids: t.List[str]) -> None:
-        tasks = []
         for pid in pids:
             configuration = await self.get_configuration(pid)
             if configuration.is_valid():
-                tasks.append(asyncio.create_task(self.__update(configuration)))
-        await wait_for_tasks(tasks)
+                try:
+                    task = self.__update(configuration)
+                    if asyncio.iscoroutine(task):
+                        await task
+                except Exception as ex:
+                    logger.exception(ex)
 
     async def __notify_factories_update(
         self,
@@ -374,22 +385,32 @@ class ConfigurationAdmin(IConfigurationAdmin):
         pid: str,
         properties: TProperties,
     ):
-        tasks = [
-            asyncio.create_task(factory.updated(pid, properties))
-            for factory in factories
-        ]
-        await wait_for_tasks(tasks)
+        for factory in factories:
+            try:
+                task = factory.updated(pid, properties)
+                if asyncio.iscoroutine(task):
+                    await task
+            except Exception as ex:
+                logger.exception(ex)
 
     async def __notify_factories_remove(
         self, factories: t.Iterable[IConfigurationManagedFactory], pid: str
     ):
-        tasks = [asyncio.create_task(factory.removed(pid)) for factory in factories]
-        await wait_for_tasks(tasks)
+        for factory in factories:
+            try:
+                task = factory.removed(pid)
+                if asyncio.iscoroutine(task):
+                    await task
+            except Exception as ex:
+                logger.exception(ex)
 
     async def __notify_services(
         self, services: IConfigurationManaged, properties: t.Optional[TProperties]
     ):
-        tasks = [
-            asyncio.create_task(service.updated(properties)) for service in services
-        ]
-        await wait_for_tasks(tasks)
+        for service in services:
+            try:
+                task = service.updated(properties)
+                if asyncio.iscoroutine(task):
+                    await task
+            except Exception as ex:
+                logger.exception(ex)

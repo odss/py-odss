@@ -4,15 +4,16 @@ import importlib
 import json
 import logging
 import os
-import subprocess
 import sys
 import dataclasses as dts
 import typing as t
 import importlib.util
+import pkg_resources
 from pathlib import Path
 from importlib.metadata import PackageNotFoundError, version
 
-import pkg_resources
+from odss.core.loop import create_job
+
 
 logger = logging.getLogger(__name__)
 
@@ -28,12 +29,12 @@ class Manifest:
 
 async def load_bundle(runner, name: str, path: str = None) -> "Integration":
     async with import_lock:
-        manifest = await runner.create_job(find_manifest, name, path)
+        manifest = await create_job(find_manifest, name, path)
     async with pip_lock:
         await process_requirements(name, manifest.requirements)
 
     async with import_lock:
-        integration = await runner.create_job(Integration.load_sync, name, path)
+        integration = await create_job(Integration.load_sync, name, path)
     integration.manifest = manifest
     return integration
 

@@ -88,37 +88,40 @@ class TaskRunner:
     def enqueue_task(self, handler, *args):
         self.task_pool.enqueue(handler, args)
 
-    def create_task(self, target, *args) -> asyncio.Task:
-        assert target
-        if asyncio.iscoroutine(target):
-            return asyncio.create_task(target)
-        elif asyncio.iscoroutinefunction(target):
-            return asyncio.create_task(target(*args))
-        elif inspect.ismethod(target):
-            asyncio.get_event_loop().call_soon(target, *args)
-            return None
-        raise TypeError(
-            "Incorrect type of target. Excpected function, coroutine or coroutinefunction"
-        )
 
-    def create_tasks(self, targets) -> asyncio.Task:
-        return [self.create_task(target, *args) for target, *args in targets]
-
-    def create_job(self, target, *args) -> asyncio.Future:
-        return asyncio.get_event_loop().run_in_executor(None, target, *args)
-
-    # def run_in_future(self, target, *args) -> asyncio.Future:
-    #     future = self.loop.create_future()
-    #     try:
-    #         future.set_result(target(*args))
-    #     except Exception as ex:
-    #         future.set_exception(ex)
-    #     return future
+def create_task(target, *args) -> asyncio.Task:
+    assert target
+    if asyncio.iscoroutine(target):
+        return asyncio.create_task(target)
+    elif asyncio.iscoroutinefunction(target):
+        return asyncio.create_task(target(*args))
+    elif inspect.ismethod(target):
+        asyncio.get_event_loop().call_soon(target, *args)
+        return None
+    raise TypeError(
+        "Incorrect type of target. Excpected function, coroutine or coroutinefunction"
+    )
 
 
-async def wait_for_tasks(tasks) -> t.Awaitable:
+def create_tasks(targets) -> asyncio.Task:
+    return [create_task(target, *args) for target, *args in targets]
+
+
+def create_job(target, *args) -> asyncio.Future:
+    return asyncio.get_event_loop().run_in_executor(None, target, *args)
+
+
+def run_in_future(target, *args) -> asyncio.Future:
+    future = asyncio.get_event_loop().create_future()
+    try:
+        future.set_result(target(*args))
+    except Exception as ex:
+        future.set_exception(ex)
+    return future
+
+
+async def wait_for_tasks(tasks: t.List[asyncio.Task]) -> t.Awaitable:
     start_time = monotonic()
-
     pending = [task for task in tasks if task and not task.done()]
     while pending:
         _, pending = await asyncio.wait(pending, timeout=BLOCK_LOG_TIMEOUT)
