@@ -1,9 +1,7 @@
 import pytest_asyncio
 
-from odss.core import create_framework
 from odss.core.events import EventDispatcher
 from odss.core.loop import TaskRunner
-
 from tests.utils import AllListener, ServiceListener
 
 

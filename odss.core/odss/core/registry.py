@@ -1,21 +1,20 @@
 import bisect
-import typing as t
 import logging
+import typing as t
 
 from odss.common import (
     OBJECTCLASS,
     SERVICE_BUNDLE_ID,
     SERVICE_ID,
     SERVICE_PRIORITY,
-    ServiceEvent,
     IBundle,
     IServiceReference,
+    ServiceEvent,
 )
 
 from .errors import BundleException
 from .query import create_query
 from .utils import class_name, classes_name
-
 
 logger = logging.getLogger(__name__)
 

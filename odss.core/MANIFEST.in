@@ -1,4 +1,4 @@
 include tox.ini
-graft requirements/*.txt
+graft requirements
 global-include py.typed
 global-exclude *.pyc

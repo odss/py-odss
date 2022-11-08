@@ -1,7 +1,7 @@
 import inspect
 import sys
 
-from odss.common import ServiceTracker, BundleEvent
+from odss.common import BundleEvent, ServiceTracker
 from odss.core.bundle import Bundle, BundleContext
 
 from .component import ComponentManager
@@ -115,7 +115,7 @@ class CdiService:
         handlers_names = factory_context.get_handlers_names()
         try:
             handlers_factories = self._get_handlers_factories(handlers_names)
-        except KeyError as ex:
+        except KeyError:
             print(f"Missing: {handlers_names}")
             return False
 

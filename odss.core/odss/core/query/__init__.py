@@ -2,6 +2,7 @@ from . import nodes, parser
 
 TQuery = nodes.Node | dict | str | None
 
+
 def create_query(query: TQuery):
     if query is None:
         return nodes.AllNode()

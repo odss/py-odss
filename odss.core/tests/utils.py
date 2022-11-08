@@ -1,6 +1,6 @@
 import asyncio
+
 from odss.common import ServiceEvent
-from odss.core import Callback
 
 TEXT_BUNDLE = "tests.bundles.text"
 SIMPLE_BUNDLE = "tests.bundles.simple"

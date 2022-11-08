@@ -44,6 +44,7 @@ class IBundle:
         Stop bundle
         """
 
+
 class IServiceReference(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def get_bundle(self) -> IBundle:
@@ -56,7 +57,6 @@ class IServiceReference(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def get_properties(self) -> t.Any:
         raise NotImplementedError()
-
 
 
 class IBundleContext:

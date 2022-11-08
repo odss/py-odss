@@ -1,4 +1,4 @@
-from odss.cdi.decorators import component, bind, invalidate, provides, unbind, validate
+from odss.cdi.decorators import bind, component, invalidate, provides, unbind, validate
 
 from .interfaces import IListener, IManager, IService, IStorage
 

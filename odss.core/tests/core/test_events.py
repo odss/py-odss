@@ -1,15 +1,14 @@
-import asyncio
 import pytest
-
 from odss.common import (
     OBJECTCLASS,
-    SERVICE_ID,
     SERVICE_BUNDLE_ID,
+    SERVICE_ID,
     SERVICE_PRIORITY,
     BundleEvent,
     FrameworkEvent,
     ServiceEvent,
 )
+
 from odss.core import create_framework
 from odss.core.errors import BundleException
 from odss.core.registry import ServiceReference
@@ -167,8 +166,6 @@ async def test_service_events(event_loop, framework, listener):
     bundle = await framework.install_bundle(TRANSLATE_BUNDLE)
 
     await bundle.start()
-
-    tasks = asyncio.all_tasks(event_loop)
 
     assert len(events) == 1
     assert events[0].kind == ServiceEvent.REGISTERED

@@ -8,19 +8,17 @@ import asyncio
 import logging
 import signal
 import sys
-import typing as t
-import async_timeout
 
+import async_timeout
 from odss.common import BundleEvent, FrameworkEvent, ServiceEvent
 
-from .consts import ACTIVATOR_CLASS, BLOCK_TIMEOUT
 from .bundle import Bundle, BundleContext
+from .consts import ACTIVATOR_CLASS, BLOCK_TIMEOUT
 from .errors import BundleException
 from .events import EventDispatcher
 from .loader import Integration, load_bundle, unload_bundle
 from .loop import TaskRunner, create_job, create_task, wait_for_tasks
 from .registry import ServiceRegistry
-
 
 __docformat__ = "restructuredtext en"
 

@@ -1,6 +1,6 @@
-import pytest
 import asyncio
 
+import pytest
 from odss.common import BundleEvent, ServiceEvent
 
 from tests.cdi.interfaces import IListener, IManager, IService, IStorage

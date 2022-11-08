@@ -36,7 +36,8 @@ class IConfiguration(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def get_factory_pid(self) -> str:
         """
-        For a factory configuration return the PID of the corresponding Managed Service Factory, else return null.
+        For a factory configuration return the PID of the corresponding
+        Managed Service Factory, else return null.
         """
 
     @abc.abstractmethod
@@ -144,7 +145,8 @@ class IConfigurationAdmin(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def get_configuration(self, pid: str) -> IConfiguration:
         """
-        Get an existing Configuration object from the persistent store, or create a new Configuration object.
+        Get an existing Configuration object from the persistent store,
+        or create a new Configuration object.
         """
 
     @abc.abstractmethod

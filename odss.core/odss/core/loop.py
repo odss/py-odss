@@ -25,7 +25,7 @@ class TaskPool:
     def __init__(self, max_workers: int = 8):
         self.max_workers = max_workers
         self.loop_event = asyncio.Event()
-        self.tasks:asyncio.Queue[tuple[t.Callable, list[t.Any]]] = asyncio.Queue()
+        self.tasks: asyncio.Queue[tuple[t.Callable, list[t.Any]]] = asyncio.Queue()
         self.workers: list[asyncio.Task] = []
 
     def enqueue(self, handler, args):
@@ -67,7 +67,7 @@ class TaskPool:
                         await result
                 finally:
                     self.tasks.task_done()
-            except asyncio.CancelledError as ex:
+            except asyncio.CancelledError:
                 break
             except Exception as ex:
                 logger.exception(ex)

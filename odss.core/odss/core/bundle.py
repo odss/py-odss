@@ -117,7 +117,7 @@ class BundleContext(IBundleContext):
             return self.__bundle
         return self.__framework.get_bundle_by_id(bundle_id)
 
-    def get_bundles(self) -> list[IBundle]  :
+    def get_bundles(self) -> list[IBundle]:
         return self.__framework.get_bundles()
 
     def get_property(self, name: str):

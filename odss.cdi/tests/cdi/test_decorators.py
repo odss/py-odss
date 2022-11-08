@@ -58,7 +58,7 @@ def test_instantiate():
             instantiate("name", invalid_props)()
 
     with pytest.raises(NameError):
-        instantiate(Dummy1)
+        instantiate(Dummy1)  # noqa: F821
 
     @instantiate
     class Dummy1:
@@ -121,7 +121,7 @@ def test_requires():
 
     @component
     class Dummy3:
-        def __init__(self, test: "Test3"):
+        def __init__(self, test: "Test3"):  # noqa: F821
             pass
 
     requirements = get_factory_context(Dummy3).get_handler(

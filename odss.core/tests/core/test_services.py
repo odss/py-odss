@@ -113,7 +113,8 @@ async def test_service_bundle_using(framework):
 
     ctx = bundle_translate.get_context()
     ref = ctx.get_service_reference(ITextService)
-    service = ctx.get_service(ref)
+
+    ctx.get_service(ref)
 
     refs = bundle_text.get_using_services()
     assert len(refs) == 0

@@ -1,19 +1,17 @@
 import asyncio
 import contextlib
+import dataclasses as dts
 import importlib
+import importlib.util
 import json
 import logging
-import os
 import sys
-import dataclasses as dts
-import typing as t
-import importlib.util
-from pkg_resources import Requirement
-from pathlib import Path
 from importlib.metadata import PackageNotFoundError, version
+from pathlib import Path
+
+from pkg_resources import Requirement
 
 from .loop import create_job
-
 
 logger = logging.getLogger(__name__)
 

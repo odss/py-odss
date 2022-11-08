@@ -3,9 +3,9 @@ import logging
 from odss.common import OBJECTCLASS, ServiceEvent
 
 from .errors import BundleException
+from .loop import create_task, wait_for_tasks
 from .query import create_query
 from .utils import class_name
-from .loop import create_task, wait_for_tasks
 
 logger = logging.getLogger(__name__)
 

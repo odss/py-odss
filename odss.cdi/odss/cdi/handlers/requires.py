@@ -1,7 +1,7 @@
 import typing as t
 
-from odss.core.bundle import BundleContext
 from odss.common import ServiceTracker
+from odss.core.bundle import BundleContext
 
 from ..component import ComponentManager
 from ..consts import HANDLER_CONSTRUCTOR_REQUIRES, HANDLER_REQUIRES, PROP_HANDLER_NAME

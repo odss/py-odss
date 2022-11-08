@@ -1,6 +1,5 @@
-import pytest
-
 from odss.common import ServiceTracker
+
 from tests.core.interfaces import ITextService
 from tests.utils import TEXT_BUNDLE, RefServiceListener
 

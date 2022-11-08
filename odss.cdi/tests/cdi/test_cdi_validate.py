@@ -1,7 +1,4 @@
-import asyncio
 import pytest
-
-from tests.cdi.interfaces import IListener, IManager, IService, IStorage
 
 
 @pytest.mark.usefixtures("cdi")
