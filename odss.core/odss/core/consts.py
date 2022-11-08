@@ -1,0 +1,3 @@
+ACTIVATOR_CLASS = "Activator"
+
+BLOCK_TIMEOUT = 1000.0
