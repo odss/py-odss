@@ -1,0 +1,2 @@
+-r tests.txt
+ipdb==0.10.3
