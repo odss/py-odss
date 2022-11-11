@@ -8,7 +8,7 @@ import sys
 import traceback
 import typing as t
 
-from odss.common import command, SHELL_DEFAULT_NAMESPACE, SHELL_COMMAND_HANDLER
+from odss.common import SHELL_COMMAND_HANDLER, SHELL_DEFAULT_NAMESPACE, command
 
 logger = logging.getLogger(__name__)
 

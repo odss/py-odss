@@ -1,5 +1,4 @@
 import pytest
-
 from odss.common import command
 
 

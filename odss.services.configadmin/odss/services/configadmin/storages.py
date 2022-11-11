@@ -1,16 +1,15 @@
-import typing as t
-from pathlib import Path
 import json
 import os
-from aiofiles import os as aos, open as aopen
+import typing as t
+from pathlib import Path
+
+from aiofiles import open as aopen
+from aiofiles import os as aos
 
 listdir = aos.wrap(os.listdir)
 
 
-from odss.common import (
-    IConfigurationStorage,
-    TProperties,
-)
+from odss.common import IConfigurationStorage, TProperties
 
 
 class MemoryStorage(IConfigurationStorage):

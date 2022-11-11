@@ -1,24 +1,23 @@
 import asyncio
-from multiprocessing.sharedctypes import Value
-from re import I
-import uuid
-import typing as t
 import collections
 import logging
-
-from odss.core.query import create_query
+import typing as t
+import uuid
+from multiprocessing.sharedctypes import Value
+from re import I
 
 from odss.common import (
-    SERVICE_PID,
     SERVICE_FACTORY_PID,
+    SERVICE_PID,
     IConfiguration,
-    IConfigurationStorage,
-    IConfigurationDirectory,
     IConfigurationAdmin,
+    IConfigurationDirectory,
     IConfigurationManaged,
     IConfigurationManagedFactory,
+    IConfigurationStorage,
     TProperties,
 )
+from odss.core.query import create_query
 
 logger = logging.getLogger(__name__)
 

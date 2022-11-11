@@ -1,5 +1,4 @@
 import pytest
-
 from odss.core import create_framework
 from odss.services.shell.shell import Shell
 

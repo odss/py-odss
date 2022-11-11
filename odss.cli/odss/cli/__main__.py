@@ -3,8 +3,7 @@ import asyncio
 import logging
 
 from odss.common import make_ascii_table
-from odss.core import __version__, Framework
-
+from odss.core import Framework, __version__
 
 from .config import load_config
 

@@ -1,13 +1,13 @@
 import logging
 
 from odss.common import (
-    command,
-    make_ascii_table,
-    SERVICE_SHELL_COMMANDS,
     OBJECTCLASS,
+    SERVICE_BUNDLE_ID,
     SERVICE_ID,
     SERVICE_PRIORITY,
-    SERVICE_BUNDLE_ID,
+    SERVICE_SHELL_COMMANDS,
+    command,
+    make_ascii_table,
 )
 
 from .utils import bundle_state_name

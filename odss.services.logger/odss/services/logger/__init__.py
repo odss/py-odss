@@ -1,4 +1,5 @@
 import logging
+
 from odss.common import (
     SERVICE_FACTORY_PID,
     SERVICE_PID,

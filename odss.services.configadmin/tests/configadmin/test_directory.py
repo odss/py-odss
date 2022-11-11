@@ -1,9 +1,5 @@
 import pytest
-
-from odss.services.configadmin.services import (
-    ConfigurationDirectory,
-    SERVICE_PID,
-)
+from odss.services.configadmin.services import SERVICE_PID, ConfigurationDirectory
 from odss.services.configadmin.storages import MemoryStorage
 
 

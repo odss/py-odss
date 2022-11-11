@@ -1,11 +1,12 @@
 from odss.common import (
-    SERVICE_PID,
     SERVICE_FACTORY_PID,
+    SERVICE_PID,
     IConfigurationManaged,
     IConfigurationManagedFactory,
     IConfigurationStorage,
     ServiceTracker,
 )
+
 from .services import ConfigurationAdmin
 
 

@@ -1,11 +1,7 @@
 import pytest
-from pytest_mock import MockerFixture
-
-from odss.services.configadmin.services import (
-    ConfigurationAdmin,
-    SERVICE_PID,
-)
+from odss.services.configadmin.services import SERVICE_PID, ConfigurationAdmin
 from odss.services.configadmin.storages import MemoryStorage
+from pytest_mock import MockerFixture
 
 
 async def test_create_empty_configuration(config_admin: ConfigurationAdmin):

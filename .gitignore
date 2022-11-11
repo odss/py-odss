@@ -1,4 +1,5 @@
 *.egg-info/
-dist
 .vscode/
-
+.tox
+.mypy_cache
+dist

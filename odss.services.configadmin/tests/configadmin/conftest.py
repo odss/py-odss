@@ -1,5 +1,4 @@
 import pytest
-
 from odss.services.configadmin.services import ConfigurationAdmin
 from odss.services.configadmin.storages import MemoryStorage
 

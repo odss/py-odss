@@ -1,11 +1,9 @@
-from dataclasses import dataclass, field
 import json
 import logging
 import os
 import typing as t
-
+from dataclasses import dataclass, field
 from importlib.metadata import entry_points
-
 
 ENTRY_POINT_GROUP = "odss.bundle"
 

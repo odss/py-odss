@@ -1,13 +1,17 @@
 from pathlib import Path
 
-from odss.common import IBundleContext
-from odss.common import IConfigurationAdmin, IConfigurationStorage
-
-from odss.common import command, SERVICE_SHELL_COMMANDS, make_ascii_table
+from odss.common import (
+    SERVICE_SHELL_COMMANDS,
+    IBundleContext,
+    IConfigurationAdmin,
+    IConfigurationStorage,
+    command,
+    make_ascii_table,
+)
 
 from .services import ConfigurationAdmin
-from .storages import MemoryStorage, JsonFileStorage
-from .trackers import StorageTracker, ManagedTracker, ManagedFactoryTracker
+from .storages import JsonFileStorage, MemoryStorage
+from .trackers import ManagedFactoryTracker, ManagedTracker, StorageTracker
 
 
 class Activator:
