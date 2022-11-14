@@ -1,4 +1,5 @@
 import os
+import json
 import shutil
 import argparse
 from pathlib import Path
@@ -8,7 +9,9 @@ from build import ProjectBuilder
 from setuptools.config.setupcfg import read_configuration
 from invoke import task
 
-ROOT = Path(__file__).parent.parent
+DEV_ROOT = Path(__file__).parent
+ROOT = DEV_ROOT.parent
+
 SETUP_FILE = "setup.cfg"
 
 
@@ -20,6 +23,30 @@ class Entry:
     commands: list[str]
     is_dev: bool = False
     is_test: bool = False
+
+
+@dataclass
+class Config:
+    entries: list[Entry]
+    manifest: str
+    devs: list[str]
+
+    @classmethod
+    def create(cls):
+        with open(DEV_ROOT / "config.json") as f:
+            config = json.load(f)
+        with open(DEV_ROOT / "tpls" / "manifest.txt") as f:
+            manifest = f.read()
+
+        entries = [Entry(**entry) for entry in config["entries"]]
+        return Config(
+            entries=entries,
+            manifest=manifest,
+            devs=config["devs"],
+        )
+
+
+config = Config.create()
 
 
 @dataclass
@@ -49,38 +76,6 @@ class Pkg:
         return False
 
 
-ENTRIES = [
-    Entry(
-        name="tests",
-        match="[tool:pytest]",
-        deps=["pytest==7.2.0", "pytest-asyncio==0.20.1"],
-        commands=["pytest -v --tb=short --basetemp={envtmpdir} {posargs:tests}"],
-        is_test=True,
-    ),
-    Entry(
-        name="formating",
-        match="",
-        deps=["black==22.10.0"],
-        commands=["black --check --diff ."],
-        is_dev=True,
-    ),
-    Entry(
-        name="typing",
-        match="[mypy]",
-        deps=["mypy==0.982", "types-setuptools==65.5.0.2"],
-        commands=["mypy odss"],
-        is_dev=True,
-    ),
-    Entry(
-        name="linting",
-        match="[flake8]",
-        deps=["flake8==5.0.4"],
-        commands=["flake8 ."],
-        is_dev=True,
-    ),
-]
-
-
 class IBuilder:
     def build(self, path: Path, force: bool):
         pass
@@ -105,7 +100,7 @@ class Requirements(IBuilder):
         dev = [f"-r {name}" for name in names]
         dev.extend(["", "ipdb==0.10.3", "pre-commit==2.17.0"])
         self.build_entry(
-            Entry("dev", '', dev, [], []),
+            Entry("dev", "", dev, [], []),
             dir_path,
         )
 
@@ -161,13 +156,7 @@ class Manifest:
             if file_path.exists():
                 return
 
-            content = """
-include tox.ini
-graft requirements
-global-include py.typed
-global-exclude *.pyc
-            """
-            file_path.write_text(content)
+            file_path.write_text(config.manifest)
 
 
 def find_pkg(path: Path):
@@ -203,7 +192,7 @@ def sort_pkgs(pkgs: list[Pkg]) -> list[Pkg]:
 
 def load_pkg(root: Path) -> list[Pkg]:
     for pkg in sort_pkgs(find_pkg(root)):
-        for entry in ENTRIES:
+        for entry in config.entries:
             if entry.match in pkg.setup:
                 pkg.entries.append(entry)
         yield pkg
@@ -261,7 +250,10 @@ def clean(c):
 def build(c):
     print("Building")
     for pkg in load_pkg(ROOT):
-        ProjectBuilder(pkg.path).build("sdist", pkg.path / "dist")
+        # c.run(f'python -m build -n {pkg.path}')
+        builder = ProjectBuilder(pkg.path)
+        for distribution in ['sdist', 'wheel']:
+            builder.build(distribution, pkg.path / "dist")
 
 
 @task(build)
@@ -280,8 +272,7 @@ def devpi_clean(c):
 @task
 def devpi_test(c):
     for pkg in load_pkg(ROOT):
-        print(pkg.name)
-        c.run(f"""devpi test --tox-args="-p" {pkg.name} """)
+        c.run(f"""devpi test -s . --tox-args="-p" {pkg.name} """)
 
 
 # if __name__ == "__main__":
