@@ -22,7 +22,14 @@ from .consts import (
     SHELL_COMMAND_HANDLER,
     SHELL_DEFAULT_NAMESPACE,
 )
-from .core import IBundle, IBundleContext, IServiceReference, IServiceTrackerListener
-from .events import BundleEvent, FrameworkEvent, ServiceEvent
+from .core import (
+    IBundle,
+    IBundleContext,
+    IServiceReference,
+    IServiceTrackerListener,
+    BundleEvent,
+    FrameworkEvent,
+    ServiceEvent,
+)
 from .shell import IShell, IShellStream, command
 from .trackers import ServiceTracker

@@ -2,8 +2,7 @@ import asyncio
 import collections
 import logging
 
-from .core import IServiceTrackerListener
-from .events import ServiceEvent
+from .core import IServiceTrackerListener, ServiceEvent
 
 __all__ = ["ServiceTracker"]
 
@@ -18,8 +17,7 @@ class ServiceTracker:
         self._context = context
         self._interface = interface
         self._query = query
-        listener = listener if listener is not None else self
-        self._tracked = _ServiceTracked(context, listener)
+        self._tracked = _ServiceTracked(context, self if listener is None else listener)
 
     async def open(self):
         logger.debug(f"Start tracking service: {self._interface} query={self._query}")

@@ -2,8 +2,6 @@ from odss.core.query import create_query
 
 
 def test_parse_eq():
-    # import ipdb; ipdb.set_trace()
-
     node = create_query("(foo=bar)")
     assert node is not None
     assert node.match({"foo": "bar"})

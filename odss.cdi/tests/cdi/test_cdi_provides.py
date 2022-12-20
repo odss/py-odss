@@ -14,7 +14,6 @@ async def test_priovides_services(framework):
             self.counter = counter
 
         def bundle_changed(self, event):
-            print("bundle_changed", event, self.counter)
             if event.kind == BundleEvent.STARTED:
                 self.counter -= 1
                 if self.counter == 0:
