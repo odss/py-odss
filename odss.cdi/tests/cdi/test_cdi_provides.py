@@ -51,12 +51,9 @@ async def test_priovides_services(framework):
     refs = framework.find_service_references(IManager)
     assert len(refs) == 0
 
-    print("=" * 100)
-
     await bundle.start()
 
     await bevent.wait()
-    print("^" * 100)
     await sevent.wait()
 
     refs = framework.find_service_references(IService)

@@ -252,7 +252,7 @@ def build(c):
     for pkg in load_pkg(ROOT):
         # c.run(f'python -m build -n {pkg.path}')
         builder = ProjectBuilder(pkg.path)
-        for distribution in ['sdist', 'wheel']:
+        for distribution in ["sdist", "wheel"]:
             builder.build(distribution, pkg.path / "dist")
 
 
