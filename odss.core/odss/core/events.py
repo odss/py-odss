@@ -103,6 +103,7 @@ class ServiceListeners:
                 listeners.update(self.by_interface[interface])
             except KeyError:
                 pass
+
         tasks = []
         for listener, interface, query in listeners:
             method = listener.service_changed

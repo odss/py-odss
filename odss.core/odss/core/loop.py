@@ -1,6 +1,7 @@
 import asyncio
 import inspect
 import logging
+import traceback
 import typing as t
 from time import monotonic
 
@@ -116,10 +117,18 @@ def run_in_future(target, *args) -> asyncio.Future:
 
 
 async def wait_for_tasks(tasks: t.List[asyncio.Task]) -> None:
+    tasks = filter(bool, tasks)
     start_time = monotonic()
     pending = [task for task in tasks if task and not task.done()]
     while pending:
-        _, pending = await asyncio.wait(pending, timeout=BLOCK_LOG_TIMEOUT)
+        tasks, pending = await asyncio.wait(pending, timeout=BLOCK_LOG_TIMEOUT)
+
+        for task in tasks:
+            ex = task.exception()
+            if ex:
+                print(ex)
+                traceback.print_exception(ex)
+
         wait_time = monotonic() - start_time
         for task in pending:
             logger.warning("Waited %s seconds for task: %s", wait_time, task)

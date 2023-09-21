@@ -76,18 +76,19 @@ def find_manifest(name: str, path: str = None):
 
 
 def unload_bundle(name):
-    try:
-        del sys.modules[name]
-    except KeyError:
-        pass
-
-    try:
-        # Clear parent reference
-        parent, basename = name.rsplit(".", 1)
-        if parent:
-            delattr(sys.modules[parent], basename)
-    except (KeyError, AttributeError, ValueError):
-        pass
+    for key, module in sorted(sys.modules.items()):
+        if key.startswith(name) and hasattr(module, "__file__"):
+            try:
+                del sys.modules[key]
+            except KeyError:
+                pass
+            try:
+                # Clear parent reference
+                parent, basename = key.rsplit(".", 1)
+                if parent:
+                    delattr(sys.modules[parent], basename)
+            except (KeyError, AttributeError, ValueError):
+                pass
 
 
 @contextlib.contextmanager

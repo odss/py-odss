@@ -171,10 +171,9 @@ class Framework(Bundle):
         self._set_state(Bundle.ACTIVE)
         await self._fire_framework_event(BundleEvent.STARTED)
 
-        if attach_signals:
-            self._stopped = asyncio.Event()
-            register_signal_handling(self)
-            await self._stopped.wait()
+        # if attach_signals:
+        #     self._stopped = asyncio.Event()
+        #     await self._stopped.wait()
 
     async def stop(self) -> None:
         if self.state != Bundle.ACTIVE:
@@ -193,8 +192,8 @@ class Framework(Bundle):
         await self._fire_framework_event(BundleEvent.STOPPED)
         await self.__runner.close()
 
-        if hasattr(self, "_stopped"):
-            self._stopped.set()
+        # if hasattr(self, "_stopped"):
+        #     self._stopped.set()
 
     async def start_bundle(self, bundle):
         if self.state not in (Bundle.STARTING, Bundle.ACTIVE):
