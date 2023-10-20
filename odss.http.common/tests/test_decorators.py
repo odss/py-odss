@@ -1,4 +1,4 @@
-from odss.http.common import route, ODSS_HTTP_HANDLER
+from odss.http.common import ODSS_HTTP_HANDLER, route
 
 
 def test_route_simple():

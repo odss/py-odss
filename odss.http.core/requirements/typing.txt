@@ -1,2 +1,0 @@
-mypy==0.982
-types-setuptools==65.5.0.2

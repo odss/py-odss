@@ -1,0 +1,44 @@
+[project]
+name = "odss.cli"
+version = "0.0.1"
+description = ""
+requires-python = ">=3.11"
+readme = "README.md"
+dependencies = [
+    "odss-common>=0.0.1",
+    "odss-core>=0.0.1",
+]
+[[project.authors]]
+name = "Piotr Smialkowski"
+email = "p.smialkowski@gmail.com"
+
+[project.license]
+text = "MIT"
+
+[build-system]
+requires = [ "pdm-backend",]
+build-backend = "pdm.backend"
+
+[project.scripts]
+odss = "odss.cli.__main__:main"
+
+[tool.pdm.build]
+package-dir = "src"
+includes = ["src/odss"]
+source-includes = ["tests", "README.md", "tox.ini"]
+
+[tool.pdm.dev-dependencies]
+lint = [ "ruff>=0.0.292",]
+type = [ "mypy>=1.6.0",]
+format = [ "black>=23.9.1", "isort>=5.12.0",]
+
+[tool.pdm.scripts]
+lint = "ruff src"
+type = "mypy src"
+format = { composite = ["isort src", "black src"] }
+
+[tool.isort]
+profile = "black"
+multi_line_output=3
+force_grid_wrap=0
+combine_as_imports=true

@@ -1,0 +1,55 @@
+[project]
+name = "odss.cdi"
+version = "0.0.1"
+description = ""
+requires-python = ">=3.11"
+dependencies = [ "odss.common == 0.0.1", "odss.core == 0.0.1",]
+readme = "README.md"
+license = {text = "MIT"}
+
+[[project.authors]]
+name = "Piotr Smialkowski"
+email = "p.smialkowski@gmail.com"
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[tool.pdm.build]
+package-dir = "src"
+includes = ["src"]
+source-includes = ["tests", "README.md", "tox.ini"]
+
+[tool.pdm.dev-dependencies]
+test = [
+    "tox>=4.11.3",
+    "pytest>=7.4.2",
+]
+lint = [
+    "ruff>=0.0.292",
+]
+type = [
+    "mypy>=1.6.0",
+]
+format = [
+    "black>=23.9.1",
+    "isort>=5.12.0",
+]
+
+[tool.pdm.scripts]
+test = "pytest tests"
+lint = "ruff src"
+type = "mypy src"
+format = { composite = ["isort src", "black src"] }
+
+[tool.pytest.ini_options]
+log_cli = true
+log_level = "WARN"
+asyncio_mode = "auto"
+testpaths = "tests"
+
+[tool.isort]
+profile = "black"
+multi_line_output=3
+force_grid_wrap=0
+combine_as_imports=true

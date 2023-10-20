@@ -1,4 +1,4 @@
-from odss.http.common import route, Request, Response, JsonResponse
+from odss.http.common import JsonResponse, RedirectResponse, Request, Response, route
 
 
 async def test_get_text(http_client):
@@ -59,6 +59,52 @@ async def test_get_param(http_client):
     assert response.content_type == "application/json"
     content = await response.json()
     assert content == {"name": "name-test"}
+
+
+async def test_redirect(http_client):
+    @route.get("/redirect")
+    async def test_redirect():
+        return RedirectResponse("/main", 300)
+
+    http_client.server.bind_handler(test_redirect)
+
+    response = await http_client.get("/redirect")
+    assert response.content_type == "text/plain"
+    assert response.status == 300
+    assert response.headers["Location"] == "/main"
+
+
+async def test_set_cookies(http_client):
+    @route.get("/cookies")
+    async def test_cookies():
+        res = Response("cookies")
+        res.cookies.set("name", "val", path="/path")
+        return res
+
+    http_client.server.bind_handler(test_cookies)
+
+    response = await http_client.get("/cookies")
+    assert response.content_type == "application/octet-stream"
+    assert response.status == 200
+    assert response.headers["Set-Cookie"] == "name=val; Path=/path"
+
+
+async def test_remove_cookies(http_client):
+    @route.get("/cookies")
+    async def test_cookies():
+        res = Response("cookies")
+        res.cookies.remove("name")
+        return res
+
+    http_client.server.bind_handler(test_cookies)
+
+    response = await http_client.get("/cookies")
+    assert response.content_type == "application/octet-stream"
+    assert response.status == 200
+    assert (
+        response.headers["Set-Cookie"]
+        == 'name=""; expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; Path=/'
+    )
 
 
 async def test_methods(http_client):

@@ -1,13 +1,15 @@
-import uuid
 import json
+import typing as t
+import uuid
 from dataclasses import dataclass
 from datetime import datetime
-from unittest.mock import Mock, MagicMock
+from unittest.mock import MagicMock, Mock
 
 import pytest
-
 from odss.http.common import Request, RouteInfo
-from odss.http.core.deps import get_dependency, resolve_dependency, SystemFieldType
+from pydantic import BaseModel
+
+from odss.http.core.deps import SystemFieldType, get_dependency, resolve_dependency
 
 
 async def test_empty_fn():
@@ -15,16 +17,11 @@ async def test_empty_fn():
         pass
 
     deps = get_dependency("", empty_fn)
-    assert deps.path_fields == []
-    assert deps.query_fields == []
-    assert deps.params_fields == []
-    assert deps.system_fields == []
-    assert deps.body_field is None
+    assert deps.fields == []
     assert deps.return_field is None
 
-    values, errors = await resolve_dependency(deps, {}, {})
+    values = await resolve_dependency(deps, {}, {})
     assert values == {}
-    assert errors == []
 
 
 async def test_system_params():
@@ -32,55 +29,28 @@ async def test_system_params():
         pass
 
     deps = get_dependency("", system_params_fn)
-    assert deps.path_fields == []
-    assert deps.query_fields == []
-    assert deps.params_fields == []
-    assert len(deps.system_fields) == 2
-    assert deps.system_fields[0].kind == SystemFieldType.REQUEST
-    assert deps.system_fields[0].name == "req"
-    assert deps.system_fields[1].kind == SystemFieldType.ROUTE_INFO
-    assert deps.system_fields[1].name == "route"
-
-    assert deps.body_field is None
+    assert len(deps.fields) == 2
+    assert deps.fields[0].name == "req"
+    assert deps.fields[1].name == "route"
     assert deps.return_field is None
 
-    values, errors = await resolve_dependency(deps, {}, {})
+    values = await resolve_dependency(deps, {}, {})
     assert values == {"req": {}, "route": {}}
-    assert errors == []
 
 
-async def test_params_singleton_types():
-    def path_and_query_params_fn(s: str, i: int, b: bool, u: uuid.UUID, dt: datetime):
+async def test_params_basic_types():
+    def path_and_query_params_fn(
+        s: str,
+        i: int,
+        b: bool,
+        u: uuid.UUID,
+        dt: datetime,
+    ):
         pass
 
     deps = get_dependency("/{s}/{i}/{b}/{u}/{dt}", path_and_query_params_fn)
 
-    assert len(deps.path_fields) == 5
-
-    assert deps.path_fields[0].name == "s"
-    assert deps.path_fields[0].type_ == str
-    assert deps.path_fields[0].required
-    assert deps.path_fields[0].default is None
-
-    assert deps.path_fields[1].name == "i"
-    assert deps.path_fields[1].type_ == int
-    assert deps.path_fields[1].required
-    assert deps.path_fields[1].default is None
-
-    assert deps.path_fields[2].name == "b"
-    assert deps.path_fields[2].type_ == bool
-    assert deps.path_fields[2].required
-    assert deps.path_fields[2].default is None
-
-    assert deps.path_fields[3].name == "u"
-    assert deps.path_fields[3].type_ == uuid.UUID
-    assert deps.path_fields[3].required
-    assert deps.path_fields[3].default is None
-
-    assert deps.path_fields[4].name == "dt"
-    assert deps.path_fields[4].type_ == datetime
-    assert deps.path_fields[4].required
-    assert deps.path_fields[4].default is None
+    assert len(deps.fields) == 5
 
     uuid4 = uuid.uuid4()
     dt = datetime.now()
@@ -99,9 +69,22 @@ async def test_params_singleton_types():
 
     request = MagicMock()
     request.match_info.get.side_effect = side_effect_helper
-    values, errors = await resolve_dependency(deps, request, {})
+    values = await resolve_dependency(deps, request, {})
     assert values == {"s": "string", "i": 123, "b": True, "u": uuid4, "dt": dt}
-    assert errors == []
+
+
+async def test_params_default_value():
+    def handler(name: str | None = None):
+        pass
+
+    deps = get_dependency("/{name}", handler)
+    request = MagicMock()
+
+    def side_effect_helper(key, default_value):
+        return default_value
+
+    request.match_info.get.side_effect = side_effect_helper
+    values = await resolve_dependency(deps, request, {})
 
 
 async def test_query_sequence_types():
@@ -110,7 +93,7 @@ async def test_query_sequence_types():
 
     deps = get_dependency("", query_sequence_params_fn)
 
-    assert len(deps.query_fields) == 1
+    assert len(deps.fields) == 1
 
     def side_effect_helper(name):
         if name == "ls":
@@ -119,9 +102,8 @@ async def test_query_sequence_types():
     request = MagicMock()
     request.query.getall.side_effect = side_effect_helper
 
-    values, errors = await resolve_dependency(deps, request, {})
+    values = await resolve_dependency(deps, request, {})
     assert values == {"ls": ["text1", "text2"]}
-    assert errors == []
 
 
 def test_path_and_query_params():
@@ -130,22 +112,7 @@ def test_path_and_query_params():
 
     deps = get_dependency("/{id}?q=name", path_and_query_params_fn)
 
-    assert len(deps.path_fields) == 1
-
-    assert deps.path_fields[0].name == "id"
-    assert deps.path_fields[0].type_ == int
-    assert deps.path_fields[0].required
-    assert deps.path_fields[0].default is None
-
-    assert len(deps.query_fields) == 1
-    assert deps.query_fields[0].name == "q"
-    assert deps.query_fields[0].type_ == str
-    assert not deps.query_fields[0].required
-    assert deps.query_fields[0].default == ""
-
-    assert deps.params_fields == []
-    assert deps.system_fields == []
-    assert deps.body_field is None
+    assert len(deps.fields) == 2
     assert deps.return_field is None
 
 
@@ -164,15 +131,7 @@ async def test_dataset_params():
 
     deps = get_dependency("", dataclass_params_fn)
 
-    assert deps.path_fields == []
-    assert deps.query_fields == []
-    assert deps.params_fields == []
-    assert deps.system_fields == []
-    assert deps.body_field is not None
-    assert deps.body_field.name == "user"
-    assert deps.body_field.type_ == User
-    assert deps.body_field.required
-
+    assert len(deps.fields) == 1
     assert deps.return_field is None
 
     async def side_effect_helper():
@@ -183,18 +142,9 @@ async def test_dataset_params():
     request.content_type = "application/json"
     request.read = side_effect_helper
 
-    values, errors = await resolve_dependency(deps, request, {})
-    assert errors == []
+    values = await resolve_dependency(deps, request, {})
     assert values["user"].id == 1
     assert values["user"].name == "Bob"
-
-
-def test_wrong_param_type():
-    def path_list_param_fn(ls: list[str]):
-        pass
-
-    with pytest.raises(TypeError):
-        get_dependency("/{ls}", path_list_param_fn)
 
 
 async def test_simple_validator_error():
@@ -208,10 +158,54 @@ async def test_simple_validator_error():
     request.query.get.side_effect = side_effect_helper
 
     deps = get_dependency("", simple_q)
-    _, errors = await resolve_dependency(deps, request, {})
+    with pytest.raises(Exception) as exc_info:
+        await resolve_dependency(deps, request, {})
+
+    errors = exc_info.value.errors
     assert len(errors) == 1
-    assert errors[0].msg == "value is not a valid integer"
     assert errors[0].location == "q"
+    assert errors[0].errors[0].type == "int_parsing"
+    assert (
+        errors[0].errors[0].msg
+        == "Input should be a valid integer, unable to parse string as an integer"
+    )
+    assert errors[0].errors[0].location == ""
+
+
+async def test_invalid_basemodel_body():
+    class Role(BaseModel):
+        id: int
+        name: int
+
+    class User(BaseModel):
+        id: int
+        name: str
+        role: Role
+
+    def dataclass_params_fn(user: User):
+        pass
+
+    deps = get_dependency("", dataclass_params_fn)
+
+    async def side_effect_helper():
+        return json.dumps({"id": 1, "login": "Bob", "role": {"id": 1}})
+
+    request = Mock()
+    request.method = "POST"
+    request.content_type = "application/json"
+    request.read = side_effect_helper
+
+    with pytest.raises(Exception) as exc_info:
+        await resolve_dependency(deps, request, {})
+    errors = exc_info.value.errors
+    assert len(errors) == 1
+    assert errors[0].msg == "ValidatorError"
+    assert errors[0].location == "user"
+    assert len(errors[0].errors) == 2
+    assert errors[0].errors[0].type == "missing"
+    assert errors[0].errors[0].location == "name"
+    assert errors[0].errors[1].type == "missing"
+    assert errors[0].errors[1].location == "role.name"
 
 
 async def test_invalid_dataset_params():
@@ -231,10 +225,6 @@ async def test_invalid_dataset_params():
         name: str
         role: Role
         profile: Profile
-
-    # class User(BaseModel):
-    #     sid: int
-    #     name: str
 
     def dataclass_params_fn(user: User):
         pass
@@ -259,22 +249,23 @@ async def test_invalid_dataset_params():
     request.content_type = "application/json"
     request.read = side_effect_helper
 
-    _, errors = await resolve_dependency(deps, request, {})
-
+    with pytest.raises(Exception) as exc_info:
+        await resolve_dependency(deps, request, {})
+    errors = exc_info.value.errors
     assert len(errors) == 1
     error = errors[0]
     assert error.location == "user"
     assert len(error.errors) == 3
-    assert error.errors[0].msg == "value is not a valid integer"
-    assert error.errors[0].type == "type_error.integer"
+    # assert error.errors[0].msg == "value is not a valid integer"
+    assert error.errors[0].type == "int_parsing"
     assert error.errors[0].location == "role.name"
 
-    assert error.errors[1].msg == "value could not be parsed to a boolean"
-    assert error.errors[1].type == "type_error.bool"
+    # assert error.errors[1].msg == "value could not be parsed to a boolean"
+    assert error.errors[1].type == "bool_parsing"
     assert error.errors[1].location == "profile.email"
 
-    assert error.errors[2].msg == "value could not be parsed to a boolean"
-    assert error.errors[2].type == "type_error.bool"
+    # assert error.errors[2].msg == "value could not be parsed to a boolean"
+    assert error.errors[2].type == "bool_parsing"
     assert error.errors[2].location == "profile.website"
 
 

@@ -24,7 +24,6 @@ async def test_start_and_stop():
     framework = await create_framework()
 
     assert framework.state == Bundle.RESOLVED
-
     await framework.start()
 
     assert framework.state == Bundle.ACTIVE
@@ -35,7 +34,6 @@ async def test_start_and_stop():
 
 
 async def test_install_uninstall_bundle(framework):
-
     bundle = await framework.install_bundle(SIMPLE_BUNDLE)
 
     assert bundle == framework.get_bundle_by_id(bundle.id)

@@ -1,11 +1,10 @@
-import pytest_asyncio
+import pytest
 
 from odss.core.events import EventDispatcher
-from odss.core.loop import TaskRunner
 from tests.utils import AllListener, ServiceListener
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 def listener():
     """
     Create mix listener
@@ -28,13 +27,10 @@ def service_listener():
 #     await framework.stop()
 
 
-@pytest_asyncio.fixture
-async def events():
+@pytest.fixture
+async def events(framework):
     """
     Create EventDispatcher instance
     """
-    runner = TaskRunner()
-    events = EventDispatcher(runner)
-    await runner.open()
+    events = EventDispatcher()
     yield events
-    await runner.close()

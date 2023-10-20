@@ -27,3 +27,9 @@ def test_parse_present():
     assert node is not None
     assert node.match({"foo": "bar"})
     assert not node.match({"bar": "foo"})
+
+
+def test_not_exists_or_value():
+    node = create_query("(|(!(foo=*))(foo=bar))")
+    assert node.match({"foo": "bar"})
+    assert node.match({})

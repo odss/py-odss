@@ -1,13 +1,13 @@
-from dataclasses import dataclass, field
 import datetime
+from dataclasses import dataclass, field
 from decimal import Decimal
 from enum import Enum
 from pathlib import Path
 from uuid import UUID
+
 import pytest
 
 from odss.http.core.encoders import serialize_to_jsonable
-
 
 datetime_now = datetime.datetime.now()
 date_today = datetime.date.today()

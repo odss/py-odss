@@ -1,6 +1,6 @@
 import pytest
 
-from odss.http.common import encode_json, decode_json, JSONError
+from odss.http.common import JsonError, decode_json, encode_json
 
 
 def test_encode_json():
@@ -17,12 +17,12 @@ def test_encode_json_error():
     d = {}
     d["d"] = d
 
-    with pytest.raises(JSONError):
+    with pytest.raises(JsonError):
         encode_json(d)
 
     del d["d"]
 
 
 def test_decode_json_error():
-    with pytest.raises(JSONError):
+    with pytest.raises(JsonError):
         decode_json("[")
