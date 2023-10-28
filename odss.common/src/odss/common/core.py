@@ -75,9 +75,15 @@ class IServiceReference(metaclass=abc.ABCMeta):
 
 class IBundleContext:
     @abc.abstractmethod
-    def get_bundle(self, bundle_id: int | None = None) -> IBundle:
+    def get_bundle(self) -> IBundle:
         """
-        Return bundle by bundle id or bundle assign to current context
+        Return context bundle
+        """
+
+    @abc.abstractmethod
+    def get_bundle_by_id(self, bundle_id: int) -> IBundle:
+        """
+        Get bundle by bundle.id
         """
 
     @abc.abstractmethod
