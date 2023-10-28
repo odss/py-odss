@@ -1,20 +1,24 @@
-import http
 import typing as t
 from http.cookies import SimpleCookie
+
+from multidict import CIMultiDict
+
+from .consts import ODSS_HTTP_REQUEST_CSRF
+from .abc import ICsrf, Request
 
 try:
     import ujson as json
 except ImportError:
     import json  # type: ignore[no-redef]
 
-from odss.http.common.abc import AuthInfo, IHttpContext, IHttpSecurityPolicy
+from .abc import AuthInfo, Request, IHttpSecurityPolicy
 
 
 class JsonError(Exception):
     pass
 
 
-def decode_json(data: str) -> t.Any:
+def decode_json(data: bytes | str) -> t.Any:
     try:
         return json.loads(data)
     except (ValueError, TypeError) as ex:
@@ -29,24 +33,20 @@ def encode_json(data: t.Any) -> str:
 
 
 class BaseHttpSecurityPolicy(IHttpSecurityPolicy):
-    def identify(self, ctx: IHttpContext) -> str:
+    def identify(self, request: Request) -> str:
         return ""
 
-    def authenticated(self, ctx: IHttpContext) -> AuthInfo:
+    def authenticated(self, request: Request) -> AuthInfo:
         return AuthInfo.create_anonymous()
 
-    def permits(self, ctx: IHttpContext, permission: str) -> bool:
+    def permits(self, request: Request, permission: str) -> bool:
         return False
 
-    def remember(self, ctx: IHttpContext, identity: str, **kw) -> None:
+    def remember(self, request: Request, identity: str, **kw) -> None:
         pass
 
-    def forget(self, ctx: IHttpContext, **kw) -> None:
+    def forget(self, request: Request, **kw) -> None:
         pass
-
-
-BodyType = str | bytes
-HeadersType = dict[str, str]
 
 
 class Cookies:
@@ -104,84 +104,14 @@ class Cookies:
     def remove(self, name: str):
         self.set(name, "", expires="Thu, 01 Jan 1970 00:00:00 GMT", max_age=0)
 
-    def _populate(self, headers):
+    def _populate(self, headers: CIMultiDict):
         for cookie in self._store.values():
             value = cookie.output(header="")[1:]
-            headers.append(("Set-Cookie", value))
+            headers.add("Set-Cookie", value)
 
 
-class Response:
-    content_type = None
-    charset = "utf-8"
-
-    def __init__(
-        self,
-        body: BodyType,
-        *,
-        code: int = 200,
-        headers: dict[str, str] | None = None,
-        content_type: str | None = None,
-        charset: str | None = None,
-    ) -> None:
-        self.cookies = Cookies()
-        if content_type is not None:
-            match content_type:
-                case "json":
-                    content_type = "application/json"
-                case "text":
-                    content_type = "text/plain"
-                case "html":
-                    content_type = "text/html"
-
-            self.content_type = content_type
-        if charset is not None:
-            self.charset = charset
-        self.code = code
-        self.body = self.prepare_body(body)
-
-        if headers is None:
-            headers = {}
-        elif isinstance(headers, list):
-            headers = dict(headers)
-        self.headers = headers
-
-    def prepare_body(self, body: BodyType):
-        if body is None:
-            return ""
-        if isinstance(body, bytes):
-            return body
-        return body.encode(self.charset)
-
-    def finish(self):
-        self.cookies._populate(self.headers)
-
-
-class HtmlResponse(Response):
-    content_type = "text/html"
-
-
-class PlainTextResponse(Response):
-    content_type = "text/plain"
-
-
-class JsonResponse(Response):
-    content_type = "application/json"
-
-    def prepare_body(self, body: BodyType):
-        return encode_json(body)
-
-
-class RedirectResponse(Response):
-    def __init__(
-        self,
-        location: str,
-        code: int,
-        *,
-        headers: dict[str, str] | None = None,
-        text: str = None,
-        charset: str = None,
-    ) -> None:
-        assert location  # raise ValueError?
-        headers = headers if headers is not None else {}
-        headers["Location"] = location
-        super().__init__(text, code=code, headers=headers, charset=charset)
+def get_csrf(request: Request) -> ICsrf:
+    try:
+        return request[ODSS_HTTP_REQUEST_CSRF]
+    except KeyError:
+        raise RuntimeError("CSRF not found. Install CSRF Middleware in your app")

@@ -9,7 +9,7 @@ from odss.common import (
     IServiceTrackerListener,
     ServiceTracker,
 )
-from odss.http.common import IHttpMiddlewareService, IHttpRouteService, IHttpServer
+from odss.http.common import IHttpMiddlewareService, IHttpRouteService, IHttpServer, IHttpSecurity
 
 from .engine import ServerEngineFactory
 from .server import HttpServer

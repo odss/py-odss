@@ -4,34 +4,22 @@ import logging
 import typing as t
 
 from aiohttp import web
-from odss.http.common import Request, Response, RouteInfo, HttpError
+from odss.http.common import IHttpServerEngineFactory, Response, RouteInfo, HttpError
 
 logger = logging.getLogger(__name__)
 
 
-Handler = t.Callable[[Request], t.Awaitable[Response]]
-
-RequestHandler = t.Callable[[Handler, Request], t.Awaitable[Response]]
-
-
-async def route_handler(handler: Handler, request: Request) -> web.Response:
-    response = handler(request)
-    if asyncio.iscoroutine(response):
-        response = await response
-    return response
-
-
-class ServerEngineFactory:
-    def create(self, request_handler: RequestHandler, host: str, port: int):
+class ServerEngineFactory(IHttpServerEngineFactory):
+    def create(self, request_handler: t.Callable, host: str, port: int):
         return ServerEngine(request_handler, host, port)
 
 
 class Application(web.Application):
-    def __init__(self, request_handler: RequestHandler) -> None:
+    def __init__(self, request_handler: t.Callable) -> None:
         super().__init__(middlewares=[])
         self.request_handler = request_handler
 
-    async def _handle(self, request: Request) -> web.StreamResponse:
+    async def _handle(self, request: web.Request) -> web.StreamResponse:
         match_info = await self._router.resolve(request)
         request._match_info = match_info
         try:
@@ -46,7 +34,7 @@ class Application(web.Application):
             )
         except HttpError as ex:
             return web.json_response(
-                ex.to_json(),
+                ex.serialize(),
                 status=ex.code,
                 reason=ex.status,
                 content_type=ex.content_type,
@@ -57,7 +45,7 @@ class Application(web.Application):
 
 class ServerEngine:
     def __init__(
-        self, request_handler: RequestHandler, host: str = "0.0.0.0", port: int = 8765
+        self, request_handler: t.Callable, host: str = "0.0.0.0", port: int = 8765
     ):
         self.request_handler = request_handler
         self.host = host
@@ -89,9 +77,8 @@ class ServerEngine:
             route_info.path,
             route_info.name,
         )
-        handler = functools.partial(route_handler, route_info.handler)
         app_route = self.app.router.add_route(
-            route_info.method, route_info.path, handler, name=route_info.name
+            route_info.method, route_info.path, route_info.handler, name=route_info.name
         )
 
         def unregister_route(app_route):

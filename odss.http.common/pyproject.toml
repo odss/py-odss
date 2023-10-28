@@ -10,6 +10,8 @@ readme = "README.md"
 license = {text = "MIT"}
 dependencies = [
     "ujson>=5.8.0",
+    "yarl>=1.9.2",
+    "multidict>=6.0.4",
 ]
 
 [build-system]

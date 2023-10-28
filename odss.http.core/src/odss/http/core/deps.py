@@ -7,7 +7,7 @@ import typing as t
 from collections import namedtuple
 
 from odss.http.common import (
-    UnprocessableContentError,
+    HttpUnprocessableContent,
     JsonError,
     Request,
     RouteInfo,
@@ -15,8 +15,9 @@ from odss.http.common import (
 )
 from pydantic import BaseModel, TypeAdapter, ValidationError, dataclasses as pdc
 
-sequence_types = (list, set, tuple)
+Field: t.TypeAlias = tuple[TypeAdapter, t.Any, bool]
 
+sequence_types = (list, set, tuple)
 
 class SystemFieldType:
     REQUEST = "request"
@@ -33,10 +34,10 @@ class SystemField:
 class IncjectContext:
     request: Request
     route: RouteInfo
-    values: list[t.Any] = dc.field(default_factory=dict)
+    values: dict[str, t.Any] = dc.field(default_factory=dict)
 
 
-class Resolver(metaclass=abc.ABCMeta):
+class AbstractResolver(metaclass=abc.ABCMeta):
     def __init__(self, name: str):
         self.name = name
 
@@ -48,29 +49,21 @@ class Resolver(metaclass=abc.ABCMeta):
         pass
 
 
-class RequestResolver(Resolver):
+class RequestResolver(AbstractResolver):
     def resolve(self, context: IncjectContext):
         return {self.name: context.request}
 
 
-class RouteResolver(Resolver):
+class RouteResolver(AbstractResolver):
     def resolve(self, context: IncjectContext):
         return {self.name: context.request}
 
 
-class ModelResolver(Resolver):
-    def __init__(self, name: str, model: BaseModel):
+class BodyResolver(AbstractResolver):
+    def __init__(self, name: str, model: t.Any):
         super().__init__(name)
-        self.model = model
-
-    def resolve(self, context: IncjectContext):
-        return {self.name: context.model}
-
-
-class BodyResolver(Resolver):
-    def __init__(self, name, model: BaseModel):
-        super().__init__(name)
-        self.model = model if not dc.is_dataclass(model) else pdc.dataclass(model)
+        model_class = model if not dc.is_dataclass(model) else pdc.dataclass(model)
+        self.model = t.cast(t.Callable, model_class)
 
     async def resolve(self, context: IncjectContext):
         request = context.request
@@ -82,13 +75,13 @@ class BodyResolver(Resolver):
             elif "multipart/form-data" in request.content_type:
                 value = await request.post()
             if value:
-                obj = self.model(**value)
+                obj = self.model(value)
                 return {self.name: obj}
         return {}
 
 
-class FieldResolver(Resolver):
-    def __init__(self, name, field):
+class AbstractFieldResolver(AbstractResolver):
+    def __init__(self, name: str, field: Field):
         super().__init__(name)
         self.field = field
 
@@ -103,11 +96,11 @@ class FieldResolver(Resolver):
         return values
 
     @abc.abstractmethod
-    def get_value(self, context: IncjectContext, field):
+    def get_value(self, context: IncjectContext, name: str, default_value: t.Any, is_list: bool) -> t.Any:
         pass
 
 
-class QueryResolver(FieldResolver):
+class QueryResolver(AbstractFieldResolver):
     def get_value(self, context: IncjectContext, name: str, default_value, is_list):
         query = context.request.query
         if is_list:
@@ -115,33 +108,21 @@ class QueryResolver(FieldResolver):
         return query.get(name, default_value)
 
 
-class ParamResolver(FieldResolver):
+class ParamResolver(AbstractFieldResolver):
     def get_value(self, context: IncjectContext, name: str, default_value, is_list):
-        return context.request.match_info.get(name, default_value)
-
-
-# class QueryModel(BaseModel):
-#     pass
-
-
-# class BodyModel(BaseModel):
-#     pass
-
-
-# class ParamsModel(BaseModel):
-#     pass
+        return context.request.params.get(name, default_value)
 
 
 @dc.dataclass
 class Dependency:
-    fields: list[Resolver] = dc.field(default_factory=list)
+    fields: list[AbstractResolver] = dc.field(default_factory=list)
     return_field: t.Any = None
 
 
 def get_dependency(path, handler: t.Callable) -> Dependency:
     path_param_names = set(re.findall("{(.*?)}", path))
     handler_signature = inspect.signature(handler)
-    fields = []
+    fields: list[AbstractResolver] = []
     has_body = False
 
     for name, spec in handler_signature.parameters.items():
@@ -186,11 +167,10 @@ def check_system_field(deps: list[t.Any], param: inspect.Parameter) -> bool:
 
 
 def is_body_field(annotation) -> bool:
-    if is_pydantic_base_model(annotation) or dc.is_dataclass(annotation):
-        return True
+    return is_pydantic_base_model(annotation) or dc.is_dataclass(annotation)
 
 
-def is_pydantic_base_model(obj):
+def is_pydantic_base_model(obj) -> bool:
     try:
         return issubclass(obj, BaseModel)
     except TypeError:
@@ -212,45 +192,47 @@ async def resolve_dependency(
         except ValidationError as error:
             all_errors.append(format_error(error, field.name))
         except JsonError as ex:
-            raise UnprocessableContentError() from ex
+            raise HttpUnprocessableContent() from ex
         if all_errors:
             raise RequestValidationError(all_errors)
     return values
 
 
-ErrorInfo = namedtuple("ValidInfo", "msg,type,location")
+ErrorInfo = namedtuple("ErrorInfo", "msg,type,location")
 
 
 @dc.dataclass
 class ResolveError:
     msg: str
-    location: tuple[str]
-    errors: list[ErrorInfo] = None
+    location: str
+    errors: list[ErrorInfo] | None = None
 
-    def to_json(self):
+    def serialize(self):
         payload = {
             "msg": self.msg,
             "location": self.location,
+            "errors": [],
         }
-        if self.errors:
-            payload["errors"] = [str(err) for err in self.errors]
+        if self.errors is not None:
+            errors = [str(err) for err in self.errors]
+            payload["errors"] = errors
         return payload
 
 
 def format_error(error: ValidationError, location: str):
     errors = [
-        ErrorInfo(err["msg"], err["type"], ".".join(err["loc"]))
+        ErrorInfo(err["msg"], err["type"], ".".join([str(loc) for loc in err["loc"]]))
         for err in error.errors()
     ]
     return ResolveError(msg="ValidatorError", location=location, errors=errors)
 
 
-class RequestValidationError(UnprocessableContentError):
+class RequestValidationError(HttpUnprocessableContent):
     def __init__(self, errors: list[ResolveError]):
         super().__init__()
         self.errors = errors
 
-    def to_json(self):
-        data = super().to_json()
-        data["errors"] = [err.to_json() for err in self.errors]
+    def serialize(self):
+        data = super().serialize()
+        data["errors"] = [err.serialize() for err in self.errors]
         return data

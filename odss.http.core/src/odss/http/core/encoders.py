@@ -46,7 +46,7 @@ def isoformat(obj: t.Union[datetime.date, datetime.time]) -> str:
 
 
 def decimal_encoder(d: decimal.Decimal) -> int | float:
-    return int(d) if d.as_tuple().exponent >= 0 else float(d)
+    return int(d) if int(d.as_tuple().exponent) >= 0 else float(d)
 
 
 ENCODERS: dict[t.Type[t.Any], t.Callable[[t.Any], t.Any]] = {

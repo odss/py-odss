@@ -6,6 +6,7 @@ import typing as t
 from odss.http.common import (
     ODSS_HTTP_HANDLER,
     ODSS_HTTP_VIEW,
+    IHttpServer,
     IHttpServerEngineFactory,
     RouteInfo,
 )
@@ -15,10 +16,10 @@ from .middewares import Middlewares
 
 logger = logging.getLogger(__name__)
 
-HandlerInfo = t.Tuple[t.Callable, t.Dict[str, t.Any]]
+HandlerInfo = tuple[t.Callable, dict[str, t.Any]]
 
 
-def extract_handlers(obj: t.Any) -> HandlerInfo:
+def extract_handlers(obj: t.Any) -> t.Iterator[HandlerInfo]:
     if hasattr(obj, ODSS_HTTP_HANDLER):
         yield obj, getattr(obj, ODSS_HTTP_HANDLER)
     else:
@@ -46,14 +47,14 @@ def extract_view_prefix(view: t.Any) -> str:
     return ""
 
 
-class HttpServer:
+class HttpServer(IHttpServer):
     def __init__(
         self, engine_factory: IHttpServerEngineFactory, host: str, port: int
     ) -> None:
         self.middlewares = Middlewares()
         self.engine_factory = engine_factory
         self.engine = None
-        self.handlers = {}
+        self.handlers: dict[t.Any, list[t.Callable]] = {}
         self.host = host
         self.port = port
 
@@ -72,10 +73,18 @@ class HttpServer:
     def add_route(self, route):
         return self.engine.add_route(route)
 
+    def add_middleware(
+        self, middleware: t.Callable, priority: tuple[int, int]
+    ):
+        return self.middlewares.add(middleware, priority)
+
     def request_handler(self, handler, request):
-        print("Server::request_handler")
-        for mid, _ in self.middlewares.all():
-            handler = functools.partial(mid, handler=handler)
+        request.is_secure = request.secure
+        settings = getattr(handler, ODSS_HTTP_HANDLER, {})
+        setattr(request, "settings", settings)
+
+        for middleware, _ in self.middlewares.all():
+            handler = functools.partial(middleware, handler=handler)
         return handler(request)
 
     def bind_handler(self, view: t.Any):
@@ -108,7 +117,3 @@ class HttpServer:
 
         return True
 
-    def add_middleware(
-        self, middleware: t.Callable, priority: t.Tuple[int, int] = None
-    ):
-        return self.middlewares.add(middleware, priority)

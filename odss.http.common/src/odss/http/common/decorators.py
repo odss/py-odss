@@ -15,14 +15,13 @@ F = t.TypeVar("F", bound=t.Callable[..., t.Any])
 
 def _create_route_decorator(
     method: str,
-) -> t.Callable[[str, str | None], t.Callable[[F], F]]:
-    def route(path: str, name: str | None = None, **settings):
+) -> t.Callable:
+    def route(path: str = "", **settings):
         settings["method"] = method.upper()
         settings["path"] = path
-        settings["name"] = name
 
         def route_decorator(fn):
-            name = settings["name"]
+            name = settings.get("name")
             settings["name"] = (
                 (name if name else fn.__qualname__).replace(">", "").replace("<", "")
             )
@@ -67,7 +66,7 @@ def extract_view_prefix(view: t.Any) -> str:
 
 
 class route:
-    def __init__(self, method: str, path: str, *, name: str | None = None, **settings):
+    def __2init__(self, method: str, path: str, *, name: str | None = None, **settings):
         settings["method"] = method.upper()
         settings["path"] = path
         settings["name"] = name

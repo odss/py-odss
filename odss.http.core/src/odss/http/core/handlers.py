@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import typing as t
+from functools import wraps
 
 from odss.http.common import JsonResponse, Request, Response
 
@@ -17,6 +18,7 @@ class ViewSettings(t.TypedDict):
 def create_request_handler(path, props, handler) -> t.Callable:
     deps = get_dependency(path, handler)
 
+    @wraps(handler)
     async def request_handler(request: Request):
         values = await resolve_dependency(deps, request, props)
         response = handler(**values)

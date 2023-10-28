@@ -1,5 +1,7 @@
 import logging
+from odss.http.common import IHttpMiddlewareService
 
+from .csrf import CsrfMiddleware, CookieStorage, FormAndHeaderPolicy
 from .trackers import ServerService
 
 logging.getLogger("aiohttp").setLevel("WARN")
@@ -14,6 +16,10 @@ class Activator:
 
         self.service = ServerService(ctx, props)
         await self.service.open()
+        await ctx.register_service(
+            IHttpMiddlewareService,
+            CsrfMiddleware(CookieStorage(), FormAndHeaderPolicy()),
+        )
 
     async def stop(self, ctx):
         await self.service.close()

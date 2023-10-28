@@ -48,7 +48,7 @@ class HttpError(Exception):
             content_type = "application/json"
         self.content_type = content_type
 
-    def to_json(self):
+    def serialize(self):
         error = {
             "code": self.code,
             "status": self.status,
@@ -119,16 +119,27 @@ class HttpPermanentRedirect(HttpRedirect):
     status_code = 308
 
 
-class BadRequestError(HttpError):
+class HttpBadRequest(HttpError):
     status_code = 400
     default_reason = "The request could not be processed"
 
 
-class UnauthorizedError(HttpError):
+class HttpUnauthorized(HttpError):
     status_code = 401
     default_reason = "The request could not be authorized"
 
 
-class UnprocessableContentError(HttpError):
+class HttpNotFound(HttpError):
+    status_code = 404
+    default_reason = "Not found selected resource"
+
+
+class HttpForbidden(HttpError):
+    status_code = 403
+    default_reason = "Access denied"
+
+
+class HttpUnprocessableContent(HttpError):
     status_code = 422
     default_reason = "The request was malformed or contained invalid parameters"
+
