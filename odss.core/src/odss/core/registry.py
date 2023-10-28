@@ -66,7 +66,7 @@ class ServiceReference(IServiceReference):
     def get_using_bundles(self):
         return list(self.__using_bundles.keys())
 
-    def get_sort_value(self) -> t.Tuple[int]:
+    def get_sort_value(self) -> tuple[int, int]:
         return self.__sort_value
 
     def check_sort_update(self) -> None:
@@ -77,7 +77,7 @@ class ServiceReference(IServiceReference):
     def update_sort_value(self) -> None:
         self.__sort_value = self.__compute_sort_value()
 
-    def __compute_sort_value(self):
+    def __compute_sort_value(self) -> tuple[int, int]:
         return (int(self.__properties.get(SERVICE_PRIORITY, 0)), self.__service_id)
 
     def __str__(self):

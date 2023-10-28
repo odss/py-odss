@@ -9,6 +9,7 @@ import logging
 import signal
 import sys
 from collections import defaultdict
+import typing as t
 
 import async_timeout
 from odss.common import BundleEvent, FrameworkEvent, ServiceEvent
@@ -80,7 +81,9 @@ class Framework(Bundle):
     def get_properties(self):
         return self.__properties.copy()
 
-    def get_property(self, name):
+    def get_property(self, name: str, defaults: t.Any | None = None):
+        if defaults:
+            return self.__properties.get(name, defaults)
         return self.__properties[name]
 
     def get_service(self, bundle, reference):

@@ -1,3 +1,4 @@
+import typing as t
 from odss.common import IBundle, IBundleContext
 
 
@@ -123,16 +124,17 @@ class BundleContext(IBundleContext):
     def get_framework(self):
         return self.__framework
 
-    def get_bundle(self, bundle_id: int = None) -> IBundle:
-        if bundle_id is None:
-            return self.__bundle
+    def get_bundle(self):
+        return self.__bundle
+
+    def get_bundle_by_id(self, bundle_id: int) -> IBundle:
         return self.__framework.get_bundle_by_id(bundle_id)
 
     def get_bundles(self) -> list[IBundle]:
         return self.__framework.get_bundles()
 
-    def get_property(self, name: str):
-        return self.__framework.get_property(name)
+    def get_property(self, name: str, defaults: t.Any | None = None):
+        return self.__framework.get_property(name, defaults)
 
     def get_service(self, reference):
         return self.__framework.get_service(self.__bundle, reference)

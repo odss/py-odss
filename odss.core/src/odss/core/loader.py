@@ -26,7 +26,7 @@ class Manifest:
         return Manifest(requirements=[], references=[])
 
 
-async def load_bundle(name: str, path: str = None) -> "Integration":
+async def load_bundle(name: str, path: str | None = None) -> "Integration":
     async with import_lock:
         manifest = await create_job(find_manifest, name, path)
     async with pip_lock:
@@ -38,7 +38,7 @@ async def load_bundle(name: str, path: str = None) -> "Integration":
     return integration
 
 
-def import_module(name: str, path: str = None):
+def import_module(name: str, path: str | None = None):
     logger.debug("Import module: %s with path: %s", name, path)
     try:
         with sys_path(path):
@@ -48,7 +48,7 @@ def import_module(name: str, path: str = None):
         raise RuntimeError("Error installing bundle '{0}': {1}".format(name, ex))
 
 
-def find_manifest(name: str, path: str = None):
+def find_manifest(name: str, path: str | None = None):
     with sys_path(path):
         try:
             spec = importlib.util.find_spec(name)
@@ -88,7 +88,7 @@ def unload_bundle(name):
 
 
 @contextlib.contextmanager
-def sys_path(path):
+def sys_path(path: str | None):
     try:
         if path:
             sys.path.insert(0, path)
@@ -106,26 +106,26 @@ class Integration:
     manifest: Manifest
 
     @classmethod
-    def load_sync(cls, name: str, include_path: str = None):
+    def load_sync(cls, name: str, include_path: str | None = None):
         module = import_module(name, include_path)
         return cls(module, Manifest.empty(), include_path)
 
     def __init__(
         self,
         module,
-        manifest: Manifest = None,
-        include_path: str = None,
+        manifest: Manifest| None = None,
+        include_path: str | None = None,
     ):
         self.module = module
         self.manifest = manifest or Manifest.empty()
         self.include_path = include_path
 
     @property
-    def references(self):
+    def references(self) -> list[str]:
         return self.manifest.references
 
     @property
-    def requirements(self):
+    def requirements(self) -> list[str]:
         return self.manifest.requirements
 
 

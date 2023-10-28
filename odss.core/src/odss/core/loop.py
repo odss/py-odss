@@ -116,14 +116,13 @@ def run_in_future(target, *args) -> asyncio.Future:
     return future
 
 
-async def wait_for_tasks(tasks: t.List[asyncio.Task]) -> None:
-    tasks = filter(bool, tasks)
+async def wait_for_tasks(tasks: list[asyncio.Task]) -> None:
     start_time = monotonic()
-    pending = [task for task in tasks if task and not task.done()]
+    pending = {task for task in filter(bool, tasks) if task and not task.done()}
     while pending:
-        tasks, pending = await asyncio.wait(pending, timeout=BLOCK_LOG_TIMEOUT)
+        done, pending = await asyncio.wait(pending, timeout=BLOCK_LOG_TIMEOUT)
 
-        for task in tasks:
+        for task in done:
             ex = task.exception()
             if ex:
                 print(ex)
