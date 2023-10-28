@@ -70,7 +70,6 @@ def _setup_callbacks(factory_context, clazz):
                 factory_context.set_callback(kind, method, args)
     if binds:
         for requirement, bind in binds.items():
-            print(hash(requirement), bind)
             factory_context.append_handler(consts.HANDLER_BIND, (requirement, bind))
 
 
